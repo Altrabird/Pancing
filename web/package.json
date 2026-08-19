@@ -1,0 +1,21 @@
+{
+  "name": "pancing",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pancing - a physics-driven fishing game built on Three.js with a fully procedural asset pipeline",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "sim": "node tools/simulate.mjs",
+    "smoke": "python tools/smoketest.py",
+    "shots": "python tools/shot.py"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  }
+}

@@ -1,0 +1,39 @@
+# --- web (Three.js) ---
+node_modules/
+web/node_modules/
+web/dist/
+web/.vite/
+.vite/
+
+# --- unity ---
+unity/*/Library/
+unity/*/Temp/
+unity/*/Obj/
+unity/*/Build/
+unity/*/Builds/
+unity/*/Logs/
+unity/*/UserSettings/
+unity/*/MemoryCaptures/
+unity/*/Recordings/
+# Android/Gradle scratch. Unity drops 109 ninja and prefab files in here on the
+# first .apk build and never cleans them up.
+unity/*/.utmp/
+unity/*/.gradle/
+unity/*/.vs/
+unity/*/.idea/
+unity/*/[Aa]ssets/AssetStoreTools*
+*.csproj
+*.sln
+*.unityproj
+*.pidb
+*.booproj
+*.svd
+*.userprefs
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+crashlytics-build.properties
+
+# --- parity harness scratch ---
+shared/parity/.build/
