@@ -42,10 +42,28 @@ namespace Pancing.Render
         public static float BodyRadius(in ArtSpec art, float u)
         {
             float t = Mathf.Clamp01(u);
+
             // Taper hard at both ends regardless of the profile, so no fish has a
             // blunt nose or a slab-ended tail root.
-            float cap = Mathf.Pow(Mathf.Sin(Mathf.PI * Mathf.Pow(t, 0.78f)), 0.55f);
-            return Mathf.Max(0.004f, ProcNoise.Spline(art.Profile, t) * cap);
+            //
+            // The Max(0, ...) is load-bearing, not defensive habit. Mathf.PI as a
+            // float is 3.14159274, slightly LARGER than pi, so at t = 1 the sine
+            // lands just past its zero crossing and returns about -8.7e-8. Raising
+            // a negative base to a fractional power is NaN, which put one NaN
+            // vertex in the tail ring of EVERY fish mesh and left Unity reporting
+            // "abnormal mesh bounds" with a NaN extent.
+            //
+            // The JavaScript original never hit it: in double precision sin(pi) is
+            // +1.2e-16, on the correct side of zero. This is exactly the class of
+            // bug that made the simulation use double throughout — the art path
+            // uses float because a vertex does not need more, and this is the price.
+            float shaped = Mathf.Max(0f, Mathf.Sin(Mathf.PI * Mathf.Pow(t, 0.78f)));
+            float cap = Mathf.Pow(shaped, 0.55f);
+
+            float radius = ProcNoise.Spline(art.Profile, t) * cap;
+            // A species with malformed art data should give a thin fish, never a
+            // mesh Unity cannot compute bounds for.
+            return float.IsNaN(radius) ? 0.004f : Mathf.Max(0.004f, radius);
         }
 
         /// <summary>Lateral half-width. Fish are compressed side to side; crustaceans are not.</summary>
