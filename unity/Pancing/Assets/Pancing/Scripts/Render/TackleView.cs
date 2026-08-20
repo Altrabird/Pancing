@@ -29,6 +29,9 @@ namespace Pancing.Render
         private Material _lineMat, _rodMat;
 
         private Species _fishSpecies;
+        private Material _lureMat;
+        private Transform _cam;
+        private float _floatDip;
         private readonly Vector3[] _rodPoints = new Vector3[RodSegments + 1];
         private readonly Vector3[] _linePoints = new Vector3[LineSegments + 1];
 
@@ -66,7 +69,8 @@ namespace Pancing.Render
             _lure.SetParent(transform, false);
             _lure.localScale = Vector3.one * 0.22f;
             var lureRenderer = _lure.GetComponent<MeshRenderer>();
-            lureRenderer.sharedMaterial = new Material(unlit) { color = new Color(1f, 0.45f, 0.12f) };
+            _lureMat = new Material(unlit) { color = new Color(1f, 0.45f, 0.12f) };
+            lureRenderer.sharedMaterial = _lureMat;
             lureRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             Destroy(_lure.GetComponent<Collider>());
 
@@ -153,7 +157,29 @@ namespace Pancing.Render
                 // Sit the float on the real surface, not on y = 0, or it hovers over
                 // every trough.
                 float surface = water != null ? water.HeightAt(x, z) : 0f;
-                lurePos = new Vector3(x, surface - (float)tm.LureDepth * 0.12f, z);
+
+                // THE FLOAT IS THE TELL.
+                //
+                // In real fishing you watch the float, not a readout. The first
+                // version left it completely inert and announced the hookset window
+                // as text in the top corner — the most time-critical event in the
+                // game, signalled where nobody is looking, with no sound. So the
+                // float now twitches on every nibble and is pulled under when the
+                // window opens, which is both the natural cue and the thing that
+                // teaches the difference between the two.
+                float dip = 0f;
+                if (tm.Bite.State == BiteState.Committed)
+                {
+                    dip = 0.40f + Mathf.Sin(Time.time * 20f) * 0.05f;   // under and held
+                }
+                else if (tm.Bite.Tapping)
+                {
+                    dip = 0.15f;                                        // a knock
+                }
+                // Snappy going down, so a 320 ms window still reads.
+                _floatDip = Mathf.Lerp(_floatDip, dip, 1f - Mathf.Exp(-20f * Time.deltaTime));
+
+                lurePos = new Vector3(x, surface - (float)tm.LureDepth * 0.12f - _floatDip, z);
             }
             else
             {
@@ -163,6 +189,27 @@ namespace Pancing.Render
             LurePos = lurePos;
             _lure.position = lurePos;
             _lure.gameObject.SetActive(flying || inWater);
+
+            // A 22 cm ball 30 m away is two pixels. Scale it with camera distance so
+            // the float stays a thing you can actually read at the far end of a cast.
+            if (_cam == null && Camera.main != null) _cam = Camera.main.transform;
+            if (_cam != null)
+            {
+                float d = Vector3.Distance(_cam.position, lurePos);
+                _lure.localScale = Vector3.one * Mathf.Clamp(0.20f * d / 7f, 0.20f, 0.70f);
+            }
+
+            // Orange while it waits, hot amber the moment the window is open —
+            // a second cue on the same object, for anyone who reads colour faster
+            // than motion.
+            if (_lureMat != null)
+            {
+                bool open = tm.Bite.State == BiteState.Committed;
+                _lureMat.color = open
+                    ? Color.Lerp(new Color(1f, 0.80f, 0.15f), Color.white,
+                                 Mathf.PingPong(Time.time * 8f, 1f) * 0.5f)
+                    : new Color(1f, 0.45f, 0.12f);
+            }
 
             bool showLine = flying || inWater;
             _line.enabled = showLine;
@@ -253,6 +300,7 @@ namespace Pancing.Render
             if (_rodMat != null) Destroy(_rodMat);
             if (_lineMat != null) Destroy(_lineMat);
             if (_fishMat != null) Destroy(_fishMat);
+            if (_lureMat != null) Destroy(_lureMat);
         }
     }
 }

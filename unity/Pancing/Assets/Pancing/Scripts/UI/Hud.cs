@@ -267,9 +267,37 @@ namespace Pancing.UI
                 new Vector2(0, 0), new Vector2(1, 0.32f), new Vector2(12, 10), new Vector2(-12, -4), out _);
             windowRow.gameObject.SetActive(false);
             _windowRow = windowRow;
+
+            BuildEdgeFlash();
         }
 
         private RectTransform _windowRow;
+        private CanvasGroup _edgeFlash;
+
+        /// <summary>
+        /// Four glowing screen edges that pulse while the hookset window is open.
+        ///
+        /// The window can be 320 ms wide and the player is looking at the float in
+        /// the middle of the screen, not at a caption in the top corner. Peripheral
+        /// vision is very good at catching a brightness change and very bad at
+        /// reading text, so the alert has to be light at the edge of the frame
+        /// rather than words anywhere. With no audio in the game, this is the only
+        /// channel left.
+        /// </summary>
+        private void BuildEdgeFlash()
+        {
+            var root = Rect("EdgeFlash", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            _edgeFlash = root.gameObject.AddComponent<CanvasGroup>();
+            _edgeFlash.alpha = 0f;
+            _edgeFlash.blocksRaycasts = false;
+
+            Color glow = new Color(1f, 0.74f, 0.20f);
+            const float t = 12f;
+            Box("EdgeTop", root, glow, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -t), new Vector2(0, 0));
+            Box("EdgeBottom", root, glow, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 0), new Vector2(0, t));
+            Box("EdgeLeft", root, glow, new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0), new Vector2(t, 0));
+            Box("EdgeRight", root, glow, new Vector2(1, 0), new Vector2(1, 1), new Vector2(-t, 0), new Vector2(0, 0));
+        }
 
         private void BuildToast()
         {
@@ -480,6 +508,19 @@ namespace Pancing.UI
             {
                 _windowFill.fillAmount = (float)bite.WindowPct;
                 _windowLabel.text = bite.Candidate != null ? $"SENTAP! {bite.Candidate.Name}" : "SENTAP!";
+                // Pulse fast — this is an alarm, not a label.
+                float pulse = 1f + Mathf.PingPong(Time.time * 7f, 1f) * 0.10f;
+                _windowRow.localScale = new Vector3(pulse, pulse, 1f);
+            }
+            else
+            {
+                _windowRow.localScale = Vector3.one;
+            }
+
+            if (_edgeFlash != null)
+            {
+                float target = windowOpen ? 0.30f + Mathf.PingPong(Time.time * 7f, 1f) * 0.45f : 0f;
+                _edgeFlash.alpha = Mathf.MoveTowards(_edgeFlash.alpha, target, Time.deltaTime * 6f);
             }
 
             if (!fishing) return;

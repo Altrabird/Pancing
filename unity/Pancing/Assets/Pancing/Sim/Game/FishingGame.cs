@@ -229,6 +229,10 @@ namespace Pancing.Sim
             SessionSeconds += dt;
             _state.Stats.PlaySeconds = MathUtil.JsRound(SessionSeconds);
 
+            // Cheap enough to re-read every tick, and this way toggling the assist
+            // takes effect on the very next bite rather than the next cast.
+            Bite.WindowScale = _state.EasyHookset ? PlayerState.EasyHooksetScale : 1.0;
+
             bool struck = _strikeQueued;
             _strikeQueued = false;
 

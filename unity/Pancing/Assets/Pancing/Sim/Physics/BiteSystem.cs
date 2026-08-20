@@ -95,6 +95,21 @@ namespace Pancing.Sim
         public double TimeSinceCast;
         public double StrikeQuality;
 
+        /// <summary>
+        /// Multiplier on the hookset window. 1.0 is the designed timing.
+        ///
+        /// A Toman gives you 320 ms, which is a genuine reflex test once you know
+        /// it is coming and simply unfair while you are still learning to read the
+        /// float. Widening the window is the one assist that makes the game easier
+        /// without making it a different game: every other decision — bait, depth,
+        /// retrieve, clutch — is untouched, and the fish still has to be persuaded
+        /// to bite in the first place.
+        ///
+        /// Left at 1.0 by default so the parity harness keeps comparing the
+        /// designed numbers; the host raises it when the player asks for help.
+        /// </summary>
+        public double WindowScale = 1.0;
+
         public BiteSystem(Rng rng, double lureMismatch)
         {
             _rng = rng;
@@ -324,7 +339,7 @@ namespace Pancing.Sim
                     if (NibblesLeft <= 0)
                     {
                         State = BiteState.Committed;
-                        WindowTotal = sp.Bite.Window;
+                        WindowTotal = sp.Bite.Window * WindowScale;
                         WindowLeft = WindowTotal;
                         return new BiteEvent { Type = BiteEventType.Bite, Species = sp, Window = WindowTotal };
                     }

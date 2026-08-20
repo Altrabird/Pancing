@@ -247,6 +247,8 @@ namespace Pancing.UI
             }
             else
             {
+                if (_tab == PanelTab.Bag) AddAssistRow(ref y);
+
                 foreach (var slot in SlotOrder)
                 {
                     var items = ItemsFor(slot);
@@ -366,6 +368,47 @@ namespace Pancing.UI
 
             if (equipped) { btn.color = new Color(0.18f, 0.36f, 0.28f, 0.95f); btnText.color = UiKit.Accent; }
             else if (empty) { btn.color = new Color(0.10f, 0.12f, 0.13f, 0.9f); btnText.color = UiKit.InkDim; }
+        }
+
+        /// <summary>
+        /// The one difficulty setting: a wider hookset window.
+        ///
+        /// It lives at the top of the bag rather than behind a settings menu because
+        /// a player who is missing every fish needs to find it while they are still
+        /// annoyed, not after they have gone looking for options.
+        /// </summary>
+        private void AddAssistRow(ref float y)
+        {
+            AddHeader("BANTUAN", ref y);
+            bool on = Game.State.EasyHookset;
+            var row = MakeRow(BagRowH, ref y, 1f);
+
+            UiKit.Label("Name", row, "Tempoh sentap lebih panjang", 17, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.72f, 1), new Vector2(12, -28), new Vector2(0, -6));
+
+            UiKit.Label("Sub", row,
+                on ? $"Hidup — tempoh {PlayerState.EasyHooksetScale:0.0}× lebih panjang"
+                   : "Mati — tempoh sebenar, Toman hanya 0.32 s",
+                13, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.78f, 1), new Vector2(12, -50), new Vector2(0, -28))
+                .color = on ? UiKit.Accent : UiKit.InkDim;
+
+            var btn = UiKit.Button("Assist", row, on ? "HIDUP" : "MATI", 15,
+                new Vector2(1, 0.5f), new Vector2(1, 0.5f),
+                new Vector2(-132, -18), new Vector2(-12, 18),
+                () =>
+                {
+                    Game.State.EasyHookset = !Game.State.EasyHookset;
+                    _hud?.Toast(Game.State.EasyHookset
+                        ? "Bantuan sentap dihidupkan."
+                        : "Bantuan sentap dimatikan.", "good");
+                    Refresh();
+                }, out var btnText);
+
+            if (on) { btn.color = new Color(0.18f, 0.36f, 0.28f, 0.95f); btnText.color = UiKit.Accent; }
+            else { btn.color = new Color(0.10f, 0.12f, 0.13f, 0.9f); btnText.color = UiKit.InkDim; }
+
+            y += 8f;
         }
 
         private void AddTravelRow(Spot spot, ref float y)

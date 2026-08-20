@@ -75,6 +75,10 @@ namespace Pancing.Sim
         // settings
         public bool SoundOn = true;
         public string Quality = "high";
+        /// <summary>Widens the hookset window. On by default — see BiteSystem.WindowScale.</summary>
+        public bool EasyHookset = true;
+        /// <summary>How much wider, when it is on.</summary>
+        public const double EasyHooksetScale = 1.9;
 
         public PlayerState(EventBus bus, GearDb gearDb, SpeciesDb speciesDb, SpotDb spotDb)
         {
@@ -508,7 +512,10 @@ namespace Pancing.Sim
             st.Set("bySpot", IntMap(Stats.BySpot));
             root.Set("stats", st);
 
-            root.Set("settings", Json.Object_().Set("sound", SoundOn).Set("quality", Quality));
+            root.Set("settings", Json.Object_()
+                .Set("sound", SoundOn)
+                .Set("quality", Quality)
+                .Set("easyHookset", EasyHookset));
             return root.ToString();
         }
 
@@ -602,6 +609,9 @@ namespace Pancing.Sim
 
             SoundOn = root["settings"]["sound"].AsBool(true);
             Quality = root["settings"]["quality"].AsString("high");
+            // Defaults true, so a save written before the setting existed keeps the
+            // help rather than silently getting harder on load.
+            EasyHookset = root["settings"]["easyHookset"].AsBool(true);
             SpotId = root["spot"].AsString(SpotId);
 
             Migrate(v);
