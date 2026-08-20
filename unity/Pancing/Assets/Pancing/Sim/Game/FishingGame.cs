@@ -202,6 +202,24 @@ namespace Pancing.Sim
             if (Phase == GameState.Fishing || Phase == GameState.Sinking) FinishCast("reeled-in");
         }
 
+        /// <summary>
+        /// Drop everything and return to READY from any phase except a live fight.
+        ///
+        /// ReelInHard only covers a lure that is already in the water. Travelling to
+        /// another location has to work from a half-charged cast or a lure still in
+        /// the air too, and leaving either running while the lake is rebuilt around
+        /// it means a cast landing in water that no longer exists.
+        ///
+        /// Refuses during FIGHT on purpose: abandoning a hooked fish by walking away
+        /// should not be free, and the panels already refuse to open with one on.
+        /// </summary>
+        public bool Abort()
+        {
+            if (Phase == GameState.Fight) return false;
+            if (Phase != GameState.Ready) FinishCast("aborted");
+            return true;
+        }
+
         public struct Toast { public string Text, Kind; }
 
         /* --- the tick ---------------------------------------------------------- */

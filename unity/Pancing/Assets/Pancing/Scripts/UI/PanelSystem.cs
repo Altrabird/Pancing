@@ -7,7 +7,7 @@ using Pancing.Sim;
 
 namespace Pancing.UI
 {
-    public enum PanelTab { None, Shop, Bag }
+    public enum PanelTab { None, Shop, Bag, Travel }
 
     /// <summary>
     /// The shop and the bag: the two screens where the player spends what they
@@ -28,6 +28,7 @@ namespace Pancing.UI
     {
         private const float ShopRowH = 82f;
         private const float BagRowH = 64f;
+        private const float TravelRowH = 104f;
         private const float HeaderH = 34f;
 
         private static readonly string[] SlotOrder = { "rod", "reel", "line", "lure" };
@@ -44,8 +45,8 @@ namespace Pancing.UI
         private Text _title, _moneyText, _hintText;
         private RectTransform _listContent;
         private ScrollRect _scroll;
-        private Image _shopTab, _bagTab;
-        private Text _shopTabText, _bagTabText;
+        private Image _shopTab, _bagTab, _travelTab;
+        private Text _shopTabText, _bagTabText, _travelTabText;
 
         private PanelTab _tab = PanelTab.None;
         private readonly List<GameObject> _rows = new List<GameObject>();
@@ -88,15 +89,18 @@ namespace Pancing.UI
         private void BuildOpenButtons()
         {
             var bar = UiKit.Rect("OpenBar", transform, new Vector2(1, 1), new Vector2(1, 1),
-                                 new Vector2(-232, -100), new Vector2(-16, -54));
+                                 new Vector2(-344, -100), new Vector2(-16, -54));
             _openBar = bar.gameObject;
 
-            UiKit.Button("OpenShop", bar, "KEDAI  (B)", 15,
-                new Vector2(0, 0), new Vector2(0.5f, 1), new Vector2(0, 0), new Vector2(-4, 0),
+            UiKit.Button("OpenShop", bar, "KEDAI (B)", 14,
+                new Vector2(0f, 0), new Vector2(0.333f, 1), new Vector2(0, 0), new Vector2(-3, 0),
                 () => Open(PanelTab.Shop), out _);
-            UiKit.Button("OpenBag", bar, "BEG  (I)", 15,
-                new Vector2(0.5f, 0), new Vector2(1, 1), new Vector2(4, 0), new Vector2(0, 0),
+            UiKit.Button("OpenBag", bar, "BEG (I)", 14,
+                new Vector2(0.333f, 0), new Vector2(0.667f, 1), new Vector2(3, 0), new Vector2(-3, 0),
                 () => Open(PanelTab.Bag), out _);
+            UiKit.Button("OpenTravel", bar, "JALAN (T)", 14,
+                new Vector2(0.667f, 0), new Vector2(1f, 1), new Vector2(3, 0), new Vector2(0, 0),
+                () => Open(PanelTab.Travel), out _);
         }
 
         private void BuildWindow()
@@ -131,6 +135,9 @@ namespace Pancing.UI
             _bagTab = UiKit.Button("TabBag", win, "BEG", 16,
                 new Vector2(0, 1), new Vector2(0, 1), new Vector2(150, -94), new Vector2(270, -60),
                 () => Open(PanelTab.Bag), out _bagTabText);
+            _travelTab = UiKit.Button("TabTravel", win, "JALAN", 16,
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(278, -94), new Vector2(398, -60),
+                () => Open(PanelTab.Travel), out _travelTabText);
 
             _listContent = UiKit.ScrollList("List", win,
                 new Vector2(0, 0), new Vector2(1, 1),
@@ -150,6 +157,8 @@ namespace Pancing.UI
             Game.Bus.On(EV.Money, _ => Refresh());
             Game.Bus.On(EV.LevelUp, _ => Refresh());
             Game.Bus.On(EV.LureOut, _ => Refresh());
+            Game.Bus.On(EV.SpotChange, _ => Refresh());
+            Game.Bus.On(EV.Unlock, _ => Refresh());
         }
 
         /* --- open / close -------------------------------------------------------- */
@@ -176,15 +185,24 @@ namespace Pancing.UI
             _input.TouchCastHeld = false;
             _input.TouchReelHeld = false;
 
-            _title.text = tab == PanelTab.Shop ? "KEDAI" : "BEG";
-            _hintText.text = tab == PanelTab.Shop
-                ? "Umpan boleh dibeli berulang kali. Alat yang lebih kuat perlukan tahap lebih tinggi."
-                : "Pilih alat untuk dipakai. Umpan habis akan bertukar kembali kepada cacing.";
+            _title.text = tab switch
+            {
+                PanelTab.Shop => "KEDAI",
+                PanelTab.Bag => "BEG",
+                _ => "JALAN",
+            };
+            _hintText.text = tab switch
+            {
+                PanelTab.Shop => "Umpan boleh dibeli berulang kali. Alat yang lebih kuat perlukan tahap lebih tinggi.",
+                PanelTab.Bag => "Pilih alat untuk dipakai. Umpan habis akan bertukar kembali kepada cacing.",
+                _ => "Air lebih dalam bermakna ikan lebih besar — dan tali anda perlu tahan.",
+            };
 
-            _shopTab.color = tab == PanelTab.Shop ? new Color(0.20f, 0.36f, 0.34f, 0.98f)
-                                                  : new Color(0.11f, 0.17f, 0.19f, 0.95f);
-            _bagTab.color = tab == PanelTab.Bag ? new Color(0.20f, 0.36f, 0.34f, 0.98f)
-                                                : new Color(0.11f, 0.17f, 0.19f, 0.95f);
+            Color on = new Color(0.20f, 0.36f, 0.34f, 0.98f);
+            Color off = new Color(0.11f, 0.17f, 0.19f, 0.95f);
+            _shopTab.color = tab == PanelTab.Shop ? on : off;
+            _bagTab.color = tab == PanelTab.Bag ? on : off;
+            _travelTab.color = tab == PanelTab.Travel ? on : off;
 
             Refresh();
         }
@@ -206,6 +224,7 @@ namespace Pancing.UI
         {
             if (UnityEngine.Input.GetKeyDown(KeyCode.B)) Toggle(PanelTab.Shop);
             if (UnityEngine.Input.GetKeyDown(KeyCode.I)) Toggle(PanelTab.Bag);
+            if (UnityEngine.Input.GetKeyDown(KeyCode.T)) Toggle(PanelTab.Travel);
             if (IsOpen && UnityEngine.Input.GetKeyDown(KeyCode.Escape)) Close();
         }
 
@@ -221,18 +240,26 @@ namespace Pancing.UI
             _moneyText.text = $"RM {Game.State.Money:0}";
 
             float y = 0f;
-            foreach (var slot in SlotOrder)
-            {
-                var items = ItemsFor(slot);
-                if (items.Count == 0) continue;
 
-                AddHeader(SlotNames[slot], ref y);
-                foreach (var item in items)
+            if (_tab == PanelTab.Travel)
+            {
+                foreach (var spot in Game.Spots.All) AddTravelRow(spot, ref y);
+            }
+            else
+            {
+                foreach (var slot in SlotOrder)
                 {
-                    if (_tab == PanelTab.Shop) AddShopRow(item, ref y);
-                    else AddBagRow(item, ref y);
+                    var items = ItemsFor(slot);
+                    if (items.Count == 0) continue;
+
+                    AddHeader(SlotNames[slot], ref y);
+                    foreach (var item in items)
+                    {
+                        if (_tab == PanelTab.Shop) AddShopRow(item, ref y);
+                        else AddBagRow(item, ref y);
+                    }
+                    y += 8f;
                 }
-                y += 8f;
             }
 
             UiKit.SetContentHeight(_listContent, y);
@@ -341,6 +368,93 @@ namespace Pancing.UI
             else if (empty) { btn.color = new Color(0.10f, 0.12f, 0.13f, 0.9f); btnText.color = UiKit.InkDim; }
         }
 
+        private void AddTravelRow(Spot spot, ref float y)
+        {
+            var state = Game.State;
+            bool here = state.SpotId == spot.Id;
+            bool unlocked = state.UnlockedSpots.Contains(spot.Id);
+            bool affordable = spot.EntryFee <= state.Money;
+            bool canGo = unlocked && affordable && !here;
+
+            var row = MakeRow(TravelRowH, ref y, unlocked ? 1f : 0.30f);
+
+            UiKit.Label("Name", row, spot.Name, 19, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.66f, 1), new Vector2(12, -32), new Vector2(0, -6));
+
+            UiKit.Paragraph("Tagline", row, spot.Tagline, 13, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.66f, 1), new Vector2(12, -54), new Vector2(0, -32))
+                .color = UiKit.InkDim;
+
+            // The numbers that decide what tackle to bring. Depth sets which fish
+            // are reachable, clarity drives how much a visible line costs you, and
+            // snag density is how often a big fish gets to break you off.
+            UiKit.Label("Stats", row, StatLineFor(spot), 13, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.78f, 1), new Vector2(12, -76), new Vector2(0, -54))
+                .color = UiKit.Accent;
+
+            UiKit.Label("Fish", row, "Ikan: " + HeadlineSpecies(spot), 13, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.82f, 1), new Vector2(12, -98), new Vector2(0, -76))
+                .color = UiKit.InkDim;
+
+            string feeText = spot.EntryFee <= 0 ? "PERCUMA" : $"RM {spot.EntryFee:0}";
+            var fee = UiKit.Label("Fee", row, feeText, 16, TextAnchor.MiddleRight,
+                new Vector2(0.66f, 1), new Vector2(1, 1), new Vector2(0, -62), new Vector2(-140, -18));
+            fee.color = !unlocked ? UiKit.InkDim : (affordable ? UiKit.Gold : UiKit.Danger);
+
+            string label;
+            System.Action onClick = null;
+            if (here) label = "DI SINI";
+            else if (!unlocked) label = $"Tahap {spot.Level}";
+            else if (!affordable) label = "Duit tak cukup";
+            else { label = "PERGI"; onClick = () => TryTravel(spot); }
+
+            var btn = UiKit.Button("Go", row, label, 15,
+                new Vector2(1, 0.5f), new Vector2(1, 0.5f),
+                new Vector2(-132, -20), new Vector2(-12, 20),
+                onClick, out var btnText);
+
+            if (here) { btn.color = new Color(0.18f, 0.36f, 0.28f, 0.95f); btnText.color = UiKit.Accent; }
+            else if (!canGo) { btn.color = new Color(0.10f, 0.12f, 0.13f, 0.9f); btnText.color = UiKit.InkDim; }
+        }
+
+        private static string StatLineFor(Spot spot)
+        {
+            string clarity = spot.WaterClarity > 0.65 ? "jernih"
+                           : spot.WaterClarity > 0.4 ? "sederhana" : "keruh";
+            string snags = spot.SnagDensity > 0.45 ? "banyak reba"
+                         : spot.SnagDensity > 0.25 ? "ada reba" : "sedikit reba";
+            return $"Dalam {spot.MaxDepth:0.0} m · Air {clarity} · {snags}";
+        }
+
+        /// <summary>
+        /// The four best fish here: rarest first, commonness only breaking ties.
+        ///
+        /// Ranking by commonness instead — which is what the catch table weights
+        /// actually describe — made every location advertise its most forgettable
+        /// residents, and put Ikan Keli at the top of all three. Nobody pays a
+        /// RM 180 entry fee for Ikan Keli. They pay it because Toman live there,
+        /// so that is what the row has to say. Junk is filtered out entirely.
+        /// </summary>
+        private static string HeadlineSpecies(Spot spot)
+        {
+            var scored = new List<KeyValuePair<string, double>>();
+            foreach (var kv in spot.Pool)
+            {
+                var sp = Game.Species.Get(kv.Key);
+                if (sp == null || sp.RarityId == "junk") continue;
+                int order = Game.Species.RarityOf(sp)?.Order ?? 0;
+                // Rarity dominates; the spot-weighted commonness only separates
+                // species of the same tier.
+                double rank = order * 1000.0 + sp.Weight * kv.Value * 0.001;
+                scored.Add(new KeyValuePair<string, double>(sp.Name, rank));
+            }
+            scored.Sort((a, b) => b.Value.CompareTo(a.Value));
+
+            var names = new List<string>();
+            for (int i = 0; i < scored.Count && i < 4; i++) names.Add(scored[i].Key);
+            return names.Count > 0 ? string.Join(", ", names) : "—";
+        }
+
         private RectTransform MakeRow(float height, ref float y, float alpha)
         {
             var rt = UiKit.Rect("Row", _listContent, new Vector2(0, 1), new Vector2(1, 1),
@@ -400,6 +514,32 @@ namespace Pancing.UI
         {
             if (Game.State.EquipItem(item.Id)) _hud?.Toast($"Dipakai: {item.Name}", "good");
             else _hud?.Toast("Tidak boleh dipakai.", "warn");
+        }
+
+        private void TryTravel(Spot spot)
+        {
+            // Wind in first. The lake is rebuilt around the player on arrival, so a
+            // lure still in the air would land in water that no longer exists — and
+            // BedDepth would be describing the pond we just left.
+            if (Game.Fishing != null && !Game.Fishing.Abort())
+            {
+                _hud?.Toast("Ada ikan di hujung tali — selesaikan dahulu.", "warn");
+                return;
+            }
+
+            var r = Game.State.Travel(spot.Id);
+            if (r.Ok)
+            {
+                _hud?.Toast($"Tiba di {spot.Name}.", "good");
+                Close();
+                return;
+            }
+            _hud?.Toast(r.Reason switch
+            {
+                "money" => $"Yuran masuk RM {r.Need:0} — duit tak cukup.",
+                "locked" => $"Perlu Tahap {r.Need:0}.",
+                _ => "Tidak boleh ke sana.",
+            }, "warn");
         }
     }
 }

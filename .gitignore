@@ -37,3 +37,11 @@ crashlytics-build.properties
 
 # --- parity harness scratch ---
 shared/parity/.build/
+
+# --- not part of this project ---
+# A separate, empty Unity 6 project ("My project", the Hub's default name) was
+# created inside this folder on 2026-08-20, most likely by Unity Hub defaulting
+# its new-project location here. It is untouched on disk and should be moved
+# out; ignoring it so `git add -A` cannot pull a second Unity project — Library
+# folder and all — into this repo.
+/My project/

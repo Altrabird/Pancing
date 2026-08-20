@@ -12,9 +12,9 @@ Pancing/
 
 ![Kolam Kampung](docs/pancing-kolam-kampung.png)
 
-| the shop | the bag |
-| --- | --- |
-| ![Shop](docs/pancing-shop.png) | ![Bag](docs/pancing-bag.png) |
+| the shop | the bag | travel |
+| --- | --- | --- |
+| ![Shop](docs/pancing-shop.png) | ![Bag](docs/pancing-bag.png) | ![Travel](docs/pancing-travel.png) |
 
 ---
 
@@ -35,12 +35,14 @@ To build:
 Controls: **hold** Space / left mouse to charge a cast and release to throw ·
 **Enter / E** to strike · **W** to reel · **A / D** to adjust the drag ·
 **right-drag** to aim · **X** to reel in and start over · **B** for the shop,
-**I** for the bag, **Esc** to close. On a phone the five fishing actions are
+**I** for the bag, **T** to travel, **Esc** to close. On a phone the five fishing actions are
 on-screen buttons, dragging the lower half of the screen aims, and the shop and
-bag have their own buttons in the top-right corner.
+bag and travel have their own buttons in the top-right corner.
 
-Opening a panel pauses the world, and neither opens with a fish on the line —
+Opening a panel pauses the world, and none of them open with a fish on the line —
 equipping reconfigures the rod, reel and line underneath a live tension solve.
+Travelling winds the line in first, because the lake is rebuilt around you on
+arrival and a lure still in the air would land in water that no longer exists.
 
 ## Why the JavaScript build is still here
 
@@ -93,7 +95,7 @@ unity/Pancing/Assets/Pancing/
   Scripts/     the renderer — a pure consumer of simulation telemetry
     Core/      bootstrap, launcher, procedural noise
     Render/    water, environment, fish mesh synthesis, tackle, camera
-    UI/        HUD
+    UI/        HUD, shop / bag / travel panels
     Input/     keyboard, mouse and touch
   Resources/   three shaders and three JSON tables. No textures. No models.
   Editor/      one-click build tool
@@ -180,7 +182,7 @@ the parity harness pins the two against each other.
 | HUD, touch controls, save/load | ✅ working |
 | Windows build | ✅ 86 MB, runs clean |
 | Android build | ✅ 35 MB `.apk`, IL2CPP, ARMv7 + ARM64 — **not yet run on a device** |
-| Shop and bag panels | ✅ working |
+| Shop, bag and travel panels | ✅ working |
 | Audio | ⬜ none yet |
-| Records / quests / travel panels | ⬜ backend done, no UI yet — so you cannot leave Kolam Kampung |
+| Records / quests panels | ⬜ backend done, no UI yet |
 | Planar reflection | ⬜ shader keyword exists, not wired |
