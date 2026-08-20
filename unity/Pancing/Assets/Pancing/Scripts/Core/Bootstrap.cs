@@ -143,8 +143,50 @@ namespace Pancing.Core
 
         /* --- scene -------------------------------------------------------------- */
 
+        /// <summary>
+        /// Take over the scene before building anything into it.
+        ///
+        /// The game supplies its own camera, sun and audio listener, and a build
+        /// starts from the empty scene BuildTool creates — so this never mattered
+        /// there. But pressing Play from Unity's DEFAULT scene means a Main Camera
+        /// and a Directional Light are already present, and then:
+        ///
+        ///   - two AudioListeners warn every single frame, which is where the
+        ///     "999+" in the console comes from;
+        ///   - two cameras at the same depth render in an undefined order, so the
+        ///     one that actually follows the fight can silently lose, and the game
+        ///     looks like it is ignoring the camera code entirely;
+        ///   - a second directional light doubles the sun and flattens the water.
+        ///
+        /// Runs before our own objects exist, so anything it finds is foreign by
+        /// definition. Disabled rather than destroyed: it is the user's scene, and
+        /// they get it back intact when they leave Play mode.
+        /// </summary>
+        private void ClaimScene()
+        {
+            foreach (var cam in FindObjectsByType<Camera>(FindObjectsSortMode.None))
+            {
+                if (cam.transform.IsChildOf(transform)) continue;
+                cam.gameObject.SetActive(false);
+            }
+
+            foreach (var listener in FindObjectsByType<AudioListener>(FindObjectsSortMode.None))
+            {
+                if (listener.transform.IsChildOf(transform)) continue;
+                listener.enabled = false;
+            }
+
+            foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
+            {
+                if (light.transform.IsChildOf(transform)) continue;
+                if (light.type == LightType.Directional) light.gameObject.SetActive(false);
+            }
+        }
+
         private void BuildScene()
         {
+            ClaimScene();
+
             var spot = Game.State.Spot;
             // Phones get the cheaper water grid and no planar reflection. The
             // difference is one pass and about 12 000 vertices, which is exactly the
