@@ -136,6 +136,46 @@ namespace Pancing.Sim
             };
         }
 
+        /// <summary>
+        /// Where a cast released right now would land, in metres out.
+        ///
+        /// Integrates the SAME ballistic step the real flight uses rather than
+        /// approximating with a range formula, so the aim line cannot quietly
+        /// disagree with what the lure actually does. Deterministic: no RNG, so it
+        /// draws the centre line of the cast, not the shot. Accuracy spread,
+        /// crosswind and backlash all still move the real splashdown — which is
+        /// exactly the risk the charge meter is asking you to take.
+        /// </summary>
+        public static double PredictDistance(double charge, double overload, in GearSet gear,
+                                             double aimPitch, double tipHeight)
+        {
+            double raw = charge + overload * 0.28;
+            if (raw <= 0) return 0;
+
+            double lureMass = 0.45 + gear.Lure.Sink * 0.55;
+            double speed = LaunchSpeed * raw * gear.Rod.CastPower * MathUtil.Lerp(0.85, 1.12, lureMass);
+            double pitch = MathUtil.Clamp(aimPitch, 0.12, 1.35);
+
+            // Solved in the vertical plane containing the aim: with no spread the
+            // trajectory never leaves it.
+            double vy = Math.Sin(pitch) * speed;
+            double vz = Math.Cos(pitch) * speed;
+            double y = tipHeight, z = 0;
+            const double dt = 1.0 / 120.0;
+
+            for (int i = 0; i < 3000; i++)
+            {
+                if (y <= 0 && vy < 0) break;
+                double sp = Math.Sqrt(vy * vy + vz * vz);
+                double drag = AirDrag * sp;
+                vy += (-Gravity - drag * vy) * dt;
+                vz += -drag * vz * dt;
+                y += vy * dt;
+                z += vz * dt;
+            }
+            return Math.Max(0, z);
+        }
+
         public enum FlightEvent { None, Splash, DryLand }
 
         public struct FlightResult

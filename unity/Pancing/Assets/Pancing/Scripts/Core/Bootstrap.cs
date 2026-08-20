@@ -41,6 +41,7 @@ namespace Pancing.Core
         private EnvironmentBuilder _env;
         private TackleView _tackle;
         private AnglerView _angler;
+        private AimArrow _aim;
         private Hud _hud;
         private PanelSystem _panels;
 
@@ -201,6 +202,7 @@ namespace Pancing.Core
             _water = WaterSurface.Create(transform, spot, highQuality);
             _tackle = TackleView.Create(transform);
             _angler = AnglerView.Create(transform);
+            _aim = AimArrow.Create(transform);
             _hud = Hud.Create(transform, _input);
             _panels = PanelSystem.Create(transform, _input, _hud);
 
@@ -295,6 +297,7 @@ namespace Pancing.Core
             _env?.ApplyConditions(Game.World, _camera != null ? _camera.Camera : null);
             _tackle?.Apply(tm, Game.Fishing, _water);
             _angler?.Apply(tm, _input.AimYaw, _tackle != null ? _tackle.RodDir : Vector3.forward, dt);
+            _aim?.Apply(tm, Game.Fishing, _input.AimYaw, _water);
             _camera?.Apply(tm, _input.AimYaw, _tackle != null ? _tackle.LurePos : Vector3.zero, dt);
             _hud?.Apply(tm, Game.World, Game.State, dt);
 
