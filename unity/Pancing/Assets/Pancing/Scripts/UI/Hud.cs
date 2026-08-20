@@ -269,10 +269,16 @@ namespace Pancing.UI
             _windowRow = windowRow;
 
             BuildEdgeFlash();
+            BuildFightBar();
         }
 
         private RectTransform _windowRow;
         private CanvasGroup _edgeFlash;
+
+        // fight bar
+        private RectTransform _fightRow, _tugMarker;
+        private Image _tugTrack, _reelAsked, _reelGot;
+        private Text _fishForce, _yourForce, _tugVerdict, _reelPct;
 
         /// <summary>
         /// Four glowing screen edges that pulse while the hookset window is open.
@@ -297,6 +303,118 @@ namespace Pancing.UI
             Box("EdgeBottom", root, glow, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 0), new Vector2(0, t));
             Box("EdgeLeft", root, glow, new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0), new Vector2(t, 0));
             Box("EdgeRight", root, glow, new Vector2(1, 0), new Vector2(1, 1), new Vector2(-t, 0), new Vector2(0, 0));
+        }
+
+        /// <summary>
+        /// The tug of war, made visible.
+        ///
+        /// The simulation has always computed this — the fish moves by
+        /// `pull - tension` against water drag — but the player could only infer it
+        /// from whether the fish was slowly getting closer. Showing it turns the
+        /// fight from "hold the needle in the green and wait" into a contest you can
+        /// see yourself winning or losing, second by second.
+        ///
+        /// The reel bar underneath shows what you ASKED for against what the reel
+        /// actually DELIVERED. The gap is the gearbox losing to the fish, and when
+        /// the clutch slips it drops to nothing — which is the clearest possible
+        /// explanation of why winding harder sometimes achieves exactly zero.
+        /// </summary>
+        private void BuildFightBar()
+        {
+            _fightRow = Rect("FightBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                             new Vector2(-270, 84), new Vector2(270, 188));
+            var bg = _fightRow.gameObject.AddComponent<Image>();
+            bg.color = Panel;
+            bg.raycastTarget = false;
+
+            _fishForce = Label("FishForce", _fightRow, "IKAN", 14, TextAnchor.MiddleLeft,
+                new Vector2(0, 1), new Vector2(0.5f, 1), new Vector2(14, -26), new Vector2(0, -6));
+            _fishForce.color = new Color(0.95f, 0.55f, 0.45f);
+
+            _yourForce = Label("YourForce", _fightRow, "ANDA", 14, TextAnchor.MiddleRight,
+                new Vector2(0.5f, 1), new Vector2(1, 1), new Vector2(0, -26), new Vector2(-14, -6));
+            _yourForce.color = new Color(0.55f, 0.85f, 0.70f);
+
+            // The tug track. Left = the fish is taking line, right = you are gaining.
+            _tugTrack = Box("TugTrack", _fightRow, new Color(0, 0, 0, 0.5f),
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(14, -60), new Vector2(-14, -30));
+
+            // A centre tick, so "level" is a place rather than a guess.
+            Box("TugCentre", _tugTrack.transform, new Color(1, 1, 1, 0.30f),
+                new Vector2(0.5f, 0), new Vector2(0.5f, 1), new Vector2(-1, 2), new Vector2(1, -2));
+
+            _tugMarker = (RectTransform)Box("TugMarker", _tugTrack.transform, Color.white,
+                new Vector2(0.5f, 0), new Vector2(0.5f, 1), new Vector2(-4, 1), new Vector2(4, -1)).transform;
+
+            _tugVerdict = Label("TugVerdict", _fightRow, "", 13, TextAnchor.MiddleCenter,
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(14, -80), new Vector2(-14, -60));
+
+            // Reel: asked vs delivered, in one track.
+            Label("ReelCap", _fightRow, "KARAU", 12, TextAnchor.MiddleLeft,
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(14, -102), new Vector2(76, -82));
+
+            _reelAsked = Bar("ReelAsked", _fightRow, new Color(0, 0, 0, 0.5f), new Color(0.42f, 0.55f, 0.60f),
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(78, -100), new Vector2(-62, -84), out var reelTrack);
+            _reelGot = Box("ReelGot", reelTrack.transform, new Color(0.55f, 0.88f, 0.72f),
+                new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 3), new Vector2(0, -3));
+            _reelGot.type = Image.Type.Filled;
+            _reelGot.fillMethod = Image.FillMethod.Horizontal;
+            _reelGot.fillAmount = 0f;
+
+            _reelPct = Label("ReelPct", _fightRow, "", 13, TextAnchor.MiddleRight,
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-58, -102), new Vector2(-14, -82));
+
+            _fightRow.gameObject.SetActive(false);
+        }
+
+        private void ApplyFightBar(in FishingGame.Telemetry tm)
+        {
+            bool fighting = tm.Fish.HasValue;
+            if (_fightRow.gameObject.activeSelf != fighting) _fightRow.gameObject.SetActive(fighting);
+            if (!fighting) return;
+
+            var fish = tm.Fish.Value;
+
+            _fishForce.text = $"IKAN  {fish.Pull:0} N";
+            _yourForce.text = $"{tm.Rod.Tension:0} N  ANDA";
+
+            // VelAway is metres per second of line leaving. Negative means it is
+            // coming to you, which is the only thing that actually wins a fight.
+            float vel = (float)fish.VelAway;
+            float frac = 0.5f - Mathf.Clamp(vel, -2.5f, 2.5f) / 5f;
+            _tugMarker.anchorMin = new Vector2(frac, 0f);
+            _tugMarker.anchorMax = new Vector2(frac, 1f);
+
+            bool gaining = vel < -0.02f;
+            bool losing = vel > 0.02f;
+            var col = gaining ? new Color(0.45f, 0.90f, 0.62f)
+                    : losing ? new Color(0.95f, 0.45f, 0.38f)
+                    : new Color(0.85f, 0.85f, 0.85f);
+            _tugMarker.GetComponent<Image>().color = col;
+
+            _tugVerdict.text = gaining ? $"Menang — {-vel:0.0} m/s masuk"
+                             : losing ? $"Ikan lari — {vel:0.0} m/s keluar"
+                             : "Seri";
+            _tugVerdict.color = col;
+
+            // Asked vs delivered. When the clutch slips, delivered is zero however
+            // hard the handle is turning.
+            float asked = Mathf.Clamp01((float)tm.ReelInput);
+            float maxRetrieve = Mathf.Max((float)tm.Gear.Reel.Retrieve, 0.01f);
+            float got = Mathf.Clamp01((float)tm.ReelGain / maxRetrieve);
+            _reelAsked.fillAmount = asked;
+            _reelGot.fillAmount = got;
+
+            if (tm.Rod.Slipping)
+            {
+                _reelPct.text = "KLAC TERGELINCIR";
+                _reelPct.color = new Color(1f, 0.62f, 0.30f);
+            }
+            else
+            {
+                _reelPct.text = asked > 0.01f ? $"{got / Mathf.Max(asked, 0.01f) * 100f:0}%" : "—";
+                _reelPct.color = UiKit.InkDim;
+            }
         }
 
         private void BuildToast()
@@ -417,6 +535,7 @@ namespace Pancing.UI
             ApplyTension(tm);
             ApplyCast(tm);
             ApplyBite(tm);
+            ApplyFightBar(tm);
             ApplyToast(dt);
             ApplyCard(tm, dt);
         }

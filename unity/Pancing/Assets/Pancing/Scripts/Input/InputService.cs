@@ -40,6 +40,12 @@ namespace Pancing.Controls
 
         private const float MaxAim = 0.62f;      // radians either side of straight out
         private const float AimSpeed = 1.35f;    // radians per second on the keyboard
+        /// <summary>Seconds of holding to reach full winching power.</summary>
+        private const float ReelRampTime = 0.55f;
+        /// <summary>Seconds to drop back to nothing. Faster than the ramp, on purpose.</summary>
+        private const float ReelReleaseTime = 0.22f;
+
+        private float _reelRamp;
 
         private bool _prevStrike;
         private int _aimPointerId = -1;
@@ -73,12 +79,38 @@ namespace Pancing.Controls
             TouchStrike = false;         // consumed; the HUD re-raises it each tap
 
             /* --- reel ------------------------------------------------------ */
-            bool keyReel = UnityEngine.Input.GetKey(KeyCode.W) || UnityEngine.Input.GetKey(KeyCode.UpArrow);
-            Reel = (keyReel || TouchReelHeld) ? 1f : 0f;
-            // A mouse wheel roll is a short burst of retrieve, which is how most
-            // people expect to "wind" without holding a key.
-            float wheel = UnityEngine.Input.mouseScrollDelta.y;
-            if (wheel > 0f) Reel = 1f;
+            //
+            // The retrieve is ANALOG, and how long you hold the key is how hard you
+            // pull. A tap is a gentle lift, a long hold winds up to full winching
+            // power over about half a second.
+            //
+            // It used to be a straight 0 or 1, which meant the only way to apply
+            // less force was to stop entirely — and "pump and wind", the technique
+            // the whole fight model is built around, was not expressible. Ramping
+            // makes the difference between nursing a fish and hauling on it
+            // something the player performs rather than something they toggle.
+            bool keyReel = UnityEngine.Input.GetKey(KeyCode.W)
+                        || UnityEngine.Input.GetKey(KeyCode.UpArrow)
+                        || TouchReelHeld;
+
+            // Winding up is deliberately slower than letting go: you should be able
+            // to dump the pressure the instant a fish surges.
+            float rampUp = dt / ReelRampTime;
+            float rampDown = dt / ReelReleaseTime;
+            _reelRamp = keyReel
+                ? Mathf.MoveTowards(_reelRamp, 1f, rampUp)
+                : Mathf.MoveTowards(_reelRamp, 0f, rampDown);
+
+            // Holding shift is "give it everything" — an override for anglers who
+            // already know they want maximum and do not want to wait for the ramp.
+            if (keyReel && (UnityEngine.Input.GetKey(KeyCode.LeftShift)
+                         || UnityEngine.Input.GetKey(KeyCode.RightShift))) _reelRamp = 1f;
+
+            Reel = _reelRamp;
+
+            // A mouse wheel roll is a short burst, which is how most people expect
+            // to "wind" without holding a key.
+            if (UnityEngine.Input.mouseScrollDelta.y > 0f) Reel = Mathf.Max(Reel, 0.7f);
 
             /* --- drag clutch ------------------------------------------------ */
             float keyDrag = 0f;

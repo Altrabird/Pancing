@@ -81,6 +81,7 @@ namespace Pancing.Sim
         private GearSet _gear;
         private FishRoll _pending;
         private double _prevReel;
+        private double _lastReel;
         private bool _strikeQueued;
         /// <summary>
         /// Counts casts, and seeds each fight's RNG sub-stream.
@@ -242,6 +243,7 @@ namespace Pancing.Sim
             // Rod-tip jerk: how violently the angler is changing retrieve. Cautious
             // fish notice.
             double reel = input.ReelAxis;
+            _lastReel = reel;
             Jerk = MathUtil.Damp(Jerk, Math.Abs(reel - _prevReel) / Math.Max(dt, 1e-4) * 0.02, 8, dt);
             _prevReel = reel;
 
@@ -585,6 +587,11 @@ namespace Pancing.Sim
             public CatchCard LastCatch;
             public GearSet Gear;
             public double FightSeconds;
+            /// <summary>What the player asked the reel for, 0..1.</summary>
+            public double ReelInput;
+            /// <summary>What the reel actually delivered, m/s. The gap between the two
+            /// is the gearbox losing to the fish — worth showing.</summary>
+            public double ReelGain;
         }
 
         public Telemetry GetTelemetry() => new Telemetry
@@ -601,6 +608,8 @@ namespace Pancing.Sim
             LastCatch = LastCatch,
             Gear = _gear,
             FightSeconds = HookedElapsed,
+            ReelInput = _lastReel,
+            ReelGain = Rod.ReelGain,
         };
     }
 }
