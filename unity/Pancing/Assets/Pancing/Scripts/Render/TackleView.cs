@@ -37,6 +37,8 @@ namespace Pancing.Render
 
         /// <summary>Where the line leaves the rod. Read by the camera and the FX.</summary>
         public Vector3 RodTip { get; private set; }
+        /// <summary>Unit vector the blank points along. The angler aims their arms at it.</summary>
+        public Vector3 RodDir { get; private set; } = Vector3.forward;
         public Vector3 LurePos { get; private set; }
 
         public static TackleView Create(Transform parent)
@@ -120,6 +122,11 @@ namespace Pancing.Render
             Vector3 forward = aim * Vector3.forward;
             Vector3 up = Vector3.up;
 
+            // The rod is held up at about 40 degrees, and bends down from there.
+            // Constant along the blank, so it is computed once and published for the
+            // angler to point their arms at.
+            RodDir = Quaternion.AngleAxis(-42f, aim * Vector3.right) * forward;
+
             // Deflection concentrated toward the tip — the classic fast-action curve.
             float k = bend * 1.35f;
             for (int i = 0; i <= RodSegments; i++)
@@ -128,9 +135,7 @@ namespace Pancing.Render
                 float droop = k * Mathf.Pow(t, 2.35f);
                 float along = rodLen * t * (1f - 0.10f * droop * droop);
                 float drop = droop * rodLen * 0.30f;
-                // The rod is held up at about 40 degrees, and bends down from there.
-                Vector3 dir = Quaternion.AngleAxis(-42f, aim * Vector3.right) * forward;
-                _rodPoints[i] = butt + dir * along - up * drop;
+                _rodPoints[i] = butt + RodDir * along - up * drop;
             }
             _rod.SetPositions(_rodPoints);
             RodTip = _rodPoints[RodSegments];
