@@ -321,8 +321,11 @@ namespace Pancing.UI
         /// </summary>
         private void BuildFightBar()
         {
+            // Sits ABOVE the tension panel, which occupies the bottom-left corner
+            // out to x = 430 and up to y = 150. The first placement put the fight
+            // bar at y 84..188 and the two drew straight through each other.
             _fightRow = Rect("FightBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-                             new Vector2(-270, 84), new Vector2(270, 188));
+                             new Vector2(-270, 160), new Vector2(270, 264));
             var bg = _fightRow.gameObject.AddComponent<Image>();
             bg.color = Panel;
             bg.raycastTarget = false;
@@ -385,8 +388,11 @@ namespace Pancing.UI
             _tugMarker.anchorMin = new Vector2(frac, 0f);
             _tugMarker.anchorMax = new Vector2(frac, 1f);
 
-            bool gaining = vel < -0.02f;
-            bool losing = vel > 0.02f;
+            // Deadband matches the one decimal place the speed is printed at, so the
+            // verdict can never read "Ikan lari — 0.0 m/s keluar" and contradict
+            // its own number.
+            bool gaining = vel < -0.05f;
+            bool losing = vel > 0.05f;
             var col = gaining ? new Color(0.45f, 0.90f, 0.62f)
                     : losing ? new Color(0.95f, 0.45f, 0.38f)
                     : new Color(0.85f, 0.85f, 0.85f);

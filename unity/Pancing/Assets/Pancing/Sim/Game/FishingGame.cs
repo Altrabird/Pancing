@@ -331,6 +331,7 @@ namespace Pancing.Sim
                 ReelInput = 0,
                 ExtraLoad = 0.9 + reel * 4.5 * (0.4 + _gear.Lure.Sink),
                 AllowSlip = false,
+                SuppressHookWear = true,   // nothing is hooked yet
             });
 
             var ev = Bite.Update(dt, new BiteSystem.Ctx

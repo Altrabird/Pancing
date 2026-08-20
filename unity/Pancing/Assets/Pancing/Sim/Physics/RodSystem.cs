@@ -247,6 +247,16 @@ namespace Pancing.Sim
             /// <summary>Additional steady pull, e.g. current or dead weight.</summary>
             public double ExtraLoad;
             public bool AllowSlip;
+            /// <summary>
+            /// Skip the hook-hold damage pass. Set while a lure is soaking with
+            /// nothing on it: a slack line works a hook loose only when the hook is
+            /// in a fish. Without this the hook-hold readout drained to critical
+            /// while the player was just waiting for a bite.
+            ///
+            /// Defaults false so every existing caller — including the parity
+            /// harness — keeps the original behaviour.
+            /// </summary>
+            public bool SuppressHookWear;
 
             public static Ctx Default => new Ctx { AllowSlip = true };
         }
@@ -348,11 +358,15 @@ namespace Pancing.Sim
             //    line go slack so the hook backs out, or bury the rod and tear the
             //    hole open.
             double hookWear = 0;
-            if (LoadFrac < ZoneSlack)
+            if (ctx.SuppressHookWear)
+            {
+                // Nothing on the end; leave the hook untouched.
+            }
+            else if (LoadFrac < ZoneSlack)
             {
                 hookWear += HookSlackRate * (1 - LoadFrac / ZoneSlack);
             }
-            if (LoadFrac > HookTearFrom)
+            if (!ctx.SuppressHookWear && LoadFrac > HookTearFrom)
             {
                 hookWear += HookTearRate * (LoadFrac - HookTearFrom) / (1 - HookTearFrom);
             }
