@@ -44,4 +44,7 @@ shared/parity/.build/
 # its new-project location here. It is untouched on disk and should be moved
 # out; ignoring it so `git add -A` cannot pull a second Unity project — Library
 # folder and all — into this repo.
-/My project/
+#
+# NOT anchored with a leading slash: a copy has already turned up at
+# unity/Pancing/My project/ as well, which a root-anchored rule missed.
+My project/
