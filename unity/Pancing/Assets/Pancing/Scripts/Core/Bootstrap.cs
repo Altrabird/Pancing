@@ -232,6 +232,7 @@ namespace Pancing.Core
             bus.On<CatchCard>(EV.Landed, card =>
             {
                 _hud?.ShowCatch(card);
+                if (card != null && !card.Lost) DevArgs.LandedAt = Time.time;
                 Save();
             });
 
@@ -277,6 +278,10 @@ namespace Pancing.Core
                 _wasCastHeld = false;
                 _accumulator = 0;
             }
+            else if (DevArgs.AutoFish)
+            {
+                AutoFish(dt);
+            }
             else
             {
                 HandleInput();
@@ -285,6 +290,7 @@ namespace Pancing.Core
             // Fixed-step the simulation, free-run the renderer.
             if (!paused) _accumulator += Mathf.Min(dt, (float)MaxCatchUp);
             var gameInput = _input.ToGameInput();
+            if (DevArgs.AutoFish && Game.Fishing.Phase == GameState.Fight) gameInput.ReelAxis = 0.55;
             int steps = 0;
             while (_accumulator >= SimStep && steps < 32)
             {
@@ -328,6 +334,27 @@ namespace Pancing.Core
             if (_input.StrikePressed) game.Strike();
 
             if (UnityEngine.Input.GetKeyDown(KeyCode.X)) game.ReelInHard();
+        }
+
+        /* --- -autofish: a hands-free angler for screenshot checks ----------------- */
+
+        private float _autoT;
+        private bool _autoHolding;
+
+        private void AutoFish(float dt)
+        {
+            var game = Game.Fishing;
+            _autoT += dt;
+            if (game.Phase == GameState.Ready && _autoT > 1.5f && !_autoHolding)
+            {
+                game.BeginCast(); _autoHolding = true; _autoT = 0f;
+            }
+            else if (_autoHolding && _autoT > 0.75f)
+            {
+                game.ReleaseCast(); _autoHolding = false; _autoT = 0f;
+            }
+            if (game.Bite.State == BiteState.Committed) game.Strike();
+            DevArgs.FightSeconds = game.Phase == GameState.Fight ? DevArgs.FightSeconds + dt : 0f;
         }
 
         private void OnApplicationPause(bool paused) { if (paused && Game.Ready) Save(); }

@@ -13,7 +13,7 @@ namespace Pancing.EditorTools
     {
         private void OnPreprocessModel()
         {
-            if (!assetPath.Contains("/Resources/Models/")) return;
+            if (!assetPath.Contains("/Resources/Models/") && !assetPath.Contains("/Resources/Fish/")) return;
             var importer = (ModelImporter)assetImporter;
             importer.isReadable = true;
             importer.materialImportMode = ModelImporterMaterialImportMode.None;

@@ -58,7 +58,7 @@ namespace Pancing.Render
             _rodMat = new Material(vcShader) { name = "RodMaterial" };
             _lineMat = new Material(unlit) { name = "LineMaterial" };
             _lineMat.color = new Color(0.92f, 0.94f, 0.96f, 1f);
-            _fishMat = new Material(vcShader) { name = "FishMaterial" };
+            _fishMat = new Material(Shader.Find("Pancing/Fish") ?? vcShader) { name = "FishMaterial" };
 
             _rod = MakeLine("Rod", _rodMat, RodSegments + 1, 0.035f, 0.010f);
             _line = MakeLine("Line", _lineMat, LineSegments + 1, 0.014f, 0.014f);
@@ -295,7 +295,18 @@ namespace Pancing.Render
                 ? Mathf.Sin(Time.time * 17f) * 22f
                 : Mathf.Sin(Time.time * 3.2f) * 5f;
 
-            var look = Quaternion.LookRotation(lookDir, Vector3.up);
+            // Tail beat: hard and fast while it runs or thrashes, a lazy scull once
+            // it tires, nothing at all from a boot.
+            bool swims = FishMeshGen.Swims(fish.Species);
+            float effort = fish.State == FightState.Thrash ? 1f
+                         : fish.State == FightState.Beaten ? 0.08f : 0.55f;
+            _fishMat.SetFloat("_SwimAmp", swims ? Mathf.Lerp(0.015f, 0.09f, effort) : 0f);
+            _fishMat.SetFloat("_SwimFreq", Mathf.Lerp(4f, 18f, effort));
+
+            // The mesh's snout is at z=0 and its tail toward +z, and the line is
+            // tied to the snout. A running fish heads AWAY (tail toward the angler);
+            // a beaten one is led in head-first.
+            var look = Quaternion.LookRotation(fish.State == FightState.Beaten ? lookDir : -lookDir, Vector3.up);
             _fishRoot.rotation = look
                 * Quaternion.Euler(airborne * -35f, thrash, Mathf.Lerp(0f, 78f, beaten));
         }

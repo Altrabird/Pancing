@@ -168,17 +168,37 @@ namespace Pancing.Render
             if (species == null) return null;
             if (Cache.TryGetValue(species.Id, out var cached) && cached != null) return cached;
 
+            // Prefer the modelled fish (art/fish_models.py → Resources/Fish): real
+            // side profiles, fins, barbels. The lofted genome mesh below is the
+            // fallback for any species that has not been modelled yet.
+            var asset = Resources.Load<GameObject>("Fish/" + species.Id);
+            var modelled = asset != null ? asset.GetComponentInChildren<MeshFilter>()?.sharedMesh : null;
+            if (modelled != null)
+            {
+                Modelled.Add(species.Id);
+                Cache[species.Id] = modelled;
+                return modelled;
+            }
+
             var mesh = Build(species.Art, species.Id);
             Cache[species.Id] = mesh;
             return mesh;
         }
 
+        /// <summary>Ids whose mesh is an imported asset — never Destroy those.</summary>
+        private static readonly HashSet<string> Modelled = new HashSet<string>();
+
+        /// <summary>Junk does not swim.</summary>
+        public static bool Swims(Species species) => species != null && species.RarityId != "junk";
+
         /// <summary>Drop the cache. A very large record book otherwise keeps every
         /// species' mesh resident for the whole session.</summary>
         public static void ClearCache()
         {
-            foreach (var kv in Cache) if (kv.Value != null) Object.Destroy(kv.Value);
+            foreach (var kv in Cache)
+                if (kv.Value != null && !Modelled.Contains(kv.Key)) Object.Destroy(kv.Value);
             Cache.Clear();
+            Modelled.Clear();
         }
 
         private static Mesh Build(in ArtSpec art, string id)

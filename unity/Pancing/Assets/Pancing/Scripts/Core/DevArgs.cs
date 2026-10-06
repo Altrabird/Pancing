@@ -21,6 +21,14 @@ namespace Pancing.Core
         public static readonly float Hour = float.TryParse(Get("-hour"), out var h) ? h : -1f;
         public static readonly bool AutoFish = Has("-autofish");
 
+        /// <summary>With -autofish, -shot fires once a fight has run this long
+        /// (falls back to -shotdelay x 4 if nothing bites).</summary>
+        public static readonly float ShotFight = float.TryParse(Get("-shotfight"), out var sf) ? sf : -1f;
+        public static float FightSeconds;
+        /// <summary>-shotcatch: shoot 1.2 s after a fish is landed (the catch card).</summary>
+        public static readonly bool ShotCatch = Has("-shotcatch");
+        public static float LandedAt = -1f;
+
         public static bool Active => Spot != null || ShotPath != null || Hour >= 0f || AutoFish;
 
         private static string Get(string key)
@@ -38,7 +46,10 @@ namespace Pancing.Core
         public static void Tick(MonoBehaviour host)
         {
             if (ShotPath == null || _shotTaken) return;
-            if (Time.timeSinceLevelLoad < ShotDelay) return;
+            bool fightReady = (ShotFight >= 0f && FightSeconds >= ShotFight)
+                           || (ShotCatch && LandedAt > 0f && Time.time > LandedAt + 1.2f);
+            float wait = ShotFight >= 0f || ShotCatch ? ShotDelay * 4f : ShotDelay;
+            if (!fightReady && Time.timeSinceLevelLoad < wait) return;
             _shotTaken = true;
             host.StartCoroutine(Capture());
         }

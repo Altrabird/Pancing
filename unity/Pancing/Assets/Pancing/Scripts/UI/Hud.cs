@@ -61,7 +61,12 @@ namespace Pancing.UI
         private CanvasGroup _cardGroup;
         private Text _cardTitle, _cardStats, _cardReward;
         private RawImage _cardPortrait;
-        private Texture2D _cardTexture;
+        private RenderTexture _stageRT;
+        private Camera _stageCam;
+        private Transform _stageFish;
+        private MeshFilter _stageFilter;
+        private Material _stageMat;
+        private float _stageSpin;
 
         // touch
         private GameObject _touchRoot;
@@ -732,66 +737,86 @@ namespace Pancing.UI
             }
             _cardReward.text = reward;
 
-            RenderPortrait(sp);
-            _cardTimer = 2.6f;
+            ShowOnStage(sp);
+            _cardTimer = 3.4f;
             _cardGroup.alpha = 1f;
         }
 
         /// <summary>
-        /// Rasterise the species' portrait from the SAME body functions the 3D mesh
-        /// is lofted through. That is the point of the shared genome: this is not an
-        /// illustration of the fish, it is the fish, drawn flat.
+        /// The card shows the actual 3D fish the player fought — the same mesh,
+        /// on a little turntable far below the world, rendered into a texture.
+        /// The stage camera only runs while the card is up.
         /// </summary>
-        private void RenderPortrait(Species sp)
+        private void ShowOnStage(Species sp)
         {
-            const int W = 300, H = 172;
-            if (_cardTexture == null)
-            {
-                _cardTexture = new Texture2D(W, H, TextureFormat.RGBA32, false)
-                { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-            }
+            if (_stageCam == null) BuildStage();
+            _stageFilter.sharedMesh = Render.FishMeshGen.For(sp);
+            var b = _stageFilter.sharedMesh.bounds;
+            float len = Mathf.Max(b.size.z, b.size.y * 1.6f, 0.01f);
+            _stageFish.localScale = Vector3.one * (1.25f / len);
+            // Centre the mesh on the turntable (pivot is at the snout).
+            _stageFilter.transform.localPosition = -b.center;
+            _stageMat.SetFloat("_SwimAmp", Render.FishMeshGen.Swims(sp) ? 0.03f : 0f);
+            _stageSpin = 0f;
+            _stageCam.enabled = true;
+            _cardPortrait.texture = _stageRT;
+        }
 
-            var art = sp.Art;
-            var pixels = new Color32[W * H];
-            Color bg = new Color(0.07f, 0.11f, 0.12f, 1f);
+        private void BuildStage()
+        {
+            var root = new GameObject("CatchStage").transform;
+            root.position = new Vector3(0f, -1000f, 0f);
 
-            for (int py = 0; py < H; py++)
-            {
-                for (int px = 0; px < W; px++)
-                {
-                    // u along the body with a margin, v measured from the centreline.
-                    float u = (px / (float)W - 0.06f) / 0.88f;
-                    float centred = (py / (float)H - 0.5f) * -2f;   // +1 top, -1 bottom
+            _stageRT = new RenderTexture(640, 368, 16, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
+            var camGo = new GameObject("StageCamera");
+            camGo.transform.SetParent(root, false);
+            camGo.transform.localPosition = new Vector3(-1.75f, 0.18f, 0f);
+            camGo.transform.localRotation = Quaternion.LookRotation(new Vector3(1.75f, -0.18f, 0f));
+            _stageCam = camGo.AddComponent<Camera>();
+            _stageCam.targetTexture = _stageRT;
+            _stageCam.clearFlags = CameraClearFlags.SolidColor;
+            _stageCam.backgroundColor = new Color(0.06f, 0.10f, 0.12f, 1f);
+            _stageCam.fieldOfView = 34f;
+            _stageCam.nearClipPlane = 0.05f;
+            _stageCam.farClipPlane = 8f;
+            _stageCam.enabled = false;
 
-                    Color c = bg;
-                    if (u >= 0f && u <= 1f)
-                    {
-                        float halfH = Render.FishMeshGen.BodyRadius(art, u) / 0.55f;
-                        if (halfH > 0.001f && Mathf.Abs(centred) <= halfH)
-                        {
-                            float v = 0.5f + 0.5f * (centred / halfH);
-                            c = Render.FishMeshGen.ColourAt(art, u, v);
-                        }
-                    }
-                    pixels[py * W + px] = c;
-                }
-            }
-
-            _cardTexture.SetPixels32(pixels);
-            _cardTexture.Apply(false, false);
-            _cardPortrait.texture = _cardTexture;
+            _stageFish = new GameObject("Turntable").transform;
+            _stageFish.SetParent(root, false);
+            var meshGo = new GameObject("Fish");
+            meshGo.transform.SetParent(_stageFish, false);
+            _stageFilter = meshGo.AddComponent<MeshFilter>();
+            var mr = meshGo.AddComponent<MeshRenderer>();
+            var shader = Shader.Find("Pancing/Fish") ?? Shader.Find("Pancing/VertexLit");
+            // Bright ambient: the card must read at midnight too.
+            _stageMat = new Material(shader) { name = "StageFish" };
+            _stageMat.SetFloat("_Ambient", 0.75f);
+            _stageMat.SetFloat("_SwimFreq", 5f);
+            mr.sharedMaterial = _stageMat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
         }
 
         private void ApplyCard(in FishingGame.Telemetry tm, float dt)
         {
-            if (_cardTimer <= 0f) return;
+            if (_cardTimer <= 0f)
+            {
+                if (_stageCam != null && _stageCam.enabled) _stageCam.enabled = false;
+                return;
+            }
             _cardTimer -= dt;
             _cardGroup.alpha = Mathf.Clamp01(_cardTimer / 0.5f);
+            // A slow turn either side of the side-on view, like holding it up.
+            _stageSpin += dt;
+            if (_stageFish != null)
+                _stageFish.localRotation = Quaternion.Euler(Mathf.Sin(_stageSpin * 1.3f) * 6f, Mathf.Sin(_stageSpin * 0.9f) * 32f, 0f);
         }
 
         private void OnDestroy()
         {
-            if (_cardTexture != null) Destroy(_cardTexture);
+            if (_stageRT != null) { _stageRT.Release(); Destroy(_stageRT); }
+            if (_stageMat != null) Destroy(_stageMat);
+            if (_stageFish != null) Destroy(_stageFish.parent.gameObject);
         }
     }
 }
