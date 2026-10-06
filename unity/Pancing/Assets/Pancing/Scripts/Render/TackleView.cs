@@ -32,6 +32,12 @@ namespace Pancing.Render
         private Material _lureMat;
         private Transform _cam;
         private float _floatDip;
+        // Rod elevation above horizontal, degrees. Rests at 42; a charging cast
+        // swings it back over the shoulder, the release whips it through.
+        private float _rodElev = RestElev;
+        private float _flightStart = -10f;
+        private bool _wasFlying;
+        private const float RestElev = 42f;
         private readonly Vector3[] _rodPoints = new Vector3[RodSegments + 1];
         private readonly Vector3[] _linePoints = new Vector3[LineSegments + 1];
 
@@ -125,7 +131,24 @@ namespace Pancing.Render
             // The rod is held up at about 40 degrees, and bends down from there.
             // Constant along the blank, so it is computed once and published for the
             // angler to point their arms at.
-            RodDir = Quaternion.AngleAxis(-42f, aim * Vector3.right) * forward;
+            // The cast, made physical: load the rod back over the shoulder as the
+            // charge builds, whip it through past the rest angle on release, then
+            // settle. Purely visual — the sim already knows where the lure goes.
+            bool flyingNow = tm.Phase == GameState.Flying;
+            if (flyingNow && !_wasFlying) _flightStart = Time.time;
+            _wasFlying = flyingNow;
+            float sinceRelease = Time.time - _flightStart;
+            float elevTarget, rate;
+            if (tm.Cast.Charging)
+            {
+                elevTarget = RestElev + 100f * Mathf.Clamp01((float)tm.Cast.Value + (float)tm.Cast.Overload);
+                rate = 6f;
+            }
+            else if (sinceRelease < 0.14f) { elevTarget = 8f; rate = 40f; }
+            else { elevTarget = RestElev; rate = 5f; }
+            _rodElev = Mathf.Lerp(_rodElev, elevTarget, 1f - Mathf.Exp(-rate * Time.deltaTime));
+
+            RodDir = Quaternion.AngleAxis(-_rodElev, aim * Vector3.right) * forward;
 
             // Deflection concentrated toward the tip — the classic fast-action curve.
             float k = bend * 1.35f;
