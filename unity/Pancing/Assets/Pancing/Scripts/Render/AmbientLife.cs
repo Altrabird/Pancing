@@ -334,7 +334,7 @@ namespace Pancing.Render
             // (Mathf.SmoothStep interpolates between its first two arguments; it is
             // not the shader smoothstep, so ramp by hand.)
             float k = Mathf.InverseLerp(0.05f, 0.6f, light);
-            _cloudMat.color = Color.Lerp(new Color(0.16f, 0.18f, 0.24f), day, k * k * (3f - 2f * k));
+            _cloudMat.color = Color.Lerp(new Color(0.42f, 0.45f, 0.52f), day, k * k * (3f - 2f * k));
 
             UpdateJumper(dt, light);
 

@@ -300,7 +300,7 @@ namespace Pancing.UI
             // Toman gives you 320 milliseconds.
             var windowRow = (RectTransform)UiKit.Card("Window", transform, new Color(0.10f, 0.07f, 0.02f, 0.86f),
                                  new Vector2(0.5f, 1), new Vector2(0.5f, 1),
-                                 new Vector2(-210, -214), new Vector2(210, -124), 18f).transform;
+                                 new Vector2(-210, -262), new Vector2(210, -172), 18f).transform;
             windowRow.Find("WindowEdge").GetComponent<Image>().color = new Color(1f, 0.78f, 0.30f, 0.65f);
             _windowLabel = Label("WindowLabel", windowRow, "SENTAP!", 34, TextAnchor.MiddleCenter,
                 new Vector2(0, 0.35f), new Vector2(1, 1), Vector2.zero, Vector2.zero);
@@ -480,7 +480,7 @@ namespace Pancing.UI
         {
             var rt = (RectTransform)UiKit.Card("Toast", transform, new Color(0.04f, 0.08f, 0.10f, 0.88f),
                           new Vector2(0.5f, 1), new Vector2(0.5f, 1),
-                          new Vector2(-260, -112), new Vector2(260, -66), 23f).transform;
+                          new Vector2(-260, -158), new Vector2(260, -112), 23f).transform;
             _toastGroup = rt.gameObject.AddComponent<CanvasGroup>();
             _toastGroup.alpha = 0f;
             _toastGroup.blocksRaycasts = false;

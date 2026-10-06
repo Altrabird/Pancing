@@ -12,9 +12,13 @@ Pancing/
 
 ![Kolam Kampung](docs/pancing-kolam-kampung.png)
 
-| the shop | the bag | travel |
+| Sungai Berbatu, in a storm | Tasik Dalam, after dark | a fight |
 | --- | --- | --- |
-| ![Shop](docs/pancing-shop.png) | ![Bag](docs/pancing-bag.png) | ![Travel](docs/pancing-travel.png) |
+| ![Sungai](docs/pancing-sungai-storm.png) | ![Tasik](docs/pancing-tasik-night.png) | ![Fight](docs/pancing-fight.png) |
+
+| the catch card | the record book | the shop |
+| --- | --- | --- |
+| ![Catch](docs/pancing-catch.png) | ![Records](docs/pancing-records.png) | ![Shop](docs/pancing-shop.png) |
 
 ---
 
@@ -33,9 +37,10 @@ To build:
 | `Pancing ▸ Build ▸ Both` | both |
 
 Controls: **hold** Space / left mouse to charge a cast and release to throw ·
-**Enter / E** to strike · **W** to reel · **A / D** to adjust the drag ·
-**right-drag** to aim · **X** to reel in and start over · **B** for the shop,
-**I** for the bag, **T** to travel, **Esc** to close. On a phone the five fishing actions are
+**Enter / E** to strike · **W** to reel (**Shift** for full power) · **A / D** to
+adjust the drag · **Q / R** or **right-drag** to aim · **X** to reel in and start
+over · **B** shop, **I** bag, **T** travel, **K** record book, **J** quests,
+**M** mute, **Esc** to close. On a phone the five fishing actions are
 on-screen buttons, dragging the lower half of the screen aims, and the shop and
 bag and travel have their own buttons in the top-right corner.
 
@@ -43,6 +48,26 @@ Opening a panel pauses the world, and none of them open with a fish on the line 
 equipping reconfigures the rod, reel and line underneath a live tension solve.
 Travelling winds the line in first, because the lake is rebuilt around you on
 arrival and a lure still in the air would land in water that no longer exists.
+
+## Art and sound
+
+Everything the player sees and hears still comes out of code or a script in
+`art/` — there are no textures and no sampled audio.
+
+| what | made by | lands in |
+| --- | --- | --- |
+| scenery (kampung house, jetty, palms, jungle, boulders, hills…) | CC0 Quaternius models via Poly Pizza, re-coloured and baked to vertex colours by `art/bake_props.py`; jambatan gantung, rumah rakit, fish cages and lily pads built procedurally in Blender | `Resources/Models/*.fbx`, placed by `PropScatter` |
+| the angler | CC0 Quaternius *Farmer*, re-dressed in Blender; posed from code (spine lean, two-bone IK onto the rod), terendak generated | `Resources/Models/angler.fbx`, `AnglerView` |
+| all 17 catches | `art/fish_models.py` — real side profiles, fins, barbels, the udang galah's claws, proper junk | `Resources/Fish/*.fbx`, swum by the `Pancing/Fish` shader |
+| every sound | `art/make_audio.py` (numpy synthesis: merbok, cicadas, katak, river, rain, reel, bonang…) | `Resources/Audio/*.wav`, `AudioService` |
+
+Source scene: `art/props.blend`. Credits: `art/CREDITS.md`.
+
+For checking a build without touching the keyboard, the player accepts
+`-spot kolam|sungai|tasik`, `-hour 21`, `-weather storm`, `-panel records`,
+`-title`, `-autofish` (casts, strikes and reels by itself) and
+`-shot out.png` with `-shotdelay N`, `-shotfight N` or `-shotcatch`. Any of them
+makes the run read-only, so a test never touches the real save.
 
 ## Why the JavaScript build is still here
 
