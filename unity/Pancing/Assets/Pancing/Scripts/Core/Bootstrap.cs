@@ -47,6 +47,8 @@ namespace Pancing.Core
         private PanelSystem _panels;
         private AudioService _audio;
         private AmbientLife _life;
+        private TitleScreen _title;
+        private Canvas _hudCanvas, _panelCanvas;
 
         private void Start()
         {
@@ -221,6 +223,10 @@ namespace Pancing.Core
             _life = AmbientLife.Create(transform, _water, _audio, _camera != null ? _camera.Camera : null);
             if (DevArgs.Panel != null && System.Enum.TryParse<PanelTab>(DevArgs.Panel, true, out var tab))
                 _panels.Open(tab);
+            // Test runs go straight to the water; -title shows the front door.
+            if (!DevArgs.Active || DevArgs.Title) _title = TitleScreen.Create(transform, _input);
+            _hudCanvas = _hud.GetComponent<Canvas>();
+            _panelCanvas = _panels.GetComponent<Canvas>();
 
             QualitySettings.shadowDistance = highQuality ? 45f : 0f;
         }
@@ -285,7 +291,11 @@ namespace Pancing.Core
             // A modal pauses the world. Without this the clock keeps running and a
             // half-charged cast auto-fires into the lake while the player is reading
             // the shop — the charge meter does not care that a window is over it.
-            bool paused = _panels != null && _panels.IsOpen;
+            bool paused = (_panels != null && _panels.IsOpen) || (_title != null && _title.IsOpen);
+            // The HUD stays hidden behind the title; it is noise until you are fishing.
+            bool titleUp = _title != null && _title.IsOpen;
+            if (_hudCanvas != null && _hudCanvas.enabled == titleUp) _hudCanvas.enabled = !titleUp;
+            if (_panelCanvas != null && _panelCanvas.enabled == titleUp) _panelCanvas.enabled = !titleUp;
             if (paused)
             {
                 _wasCastHeld = false;

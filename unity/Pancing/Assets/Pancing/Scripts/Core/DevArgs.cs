@@ -23,6 +23,7 @@ namespace Pancing.Core
         public static readonly string Weather = Get("-weather");
         /// <summary>-panel shop|bag|travel|records|quests: open a panel at start.</summary>
         public static readonly string Panel = Get("-panel");
+        public static readonly bool Title = Has("-title");
 
         /// <summary>With -autofish, -shot fires once a fight has run this long
         /// (falls back to -shotdelay x 4 if nothing bites).</summary>

@@ -32,7 +32,7 @@ namespace Pancing.Render
         private readonly List<Bird> _birds = new List<Bird>();
         private readonly List<Transform> _clouds = new List<Transform>();
         private readonly List<Mesh> _meshes = new List<Mesh>();
-        private Material _mat, _fishMat, _glowMat;
+        private Material _mat, _cloudMat, _fishMat, _glowMat;
         private Texture2D _glowTex;
 
         /// <summary>A soft round dot, so a firefly is a glow rather than a square.</summary>
@@ -80,6 +80,10 @@ namespace Pancing.Render
         {
             var vl = Shader.Find("Pancing/VertexLit");
             _mat = new Material(vl) { name = "LifeMaterial" };
+            // Clouds are lit mostly by the sky, not the sun: high ambient keeps
+            // their bellies from going charcoal when the sun is low.
+            _cloudMat = new Material(vl) { name = "CloudMaterial" };
+            _cloudMat.SetFloat("_Ambient", 0.75f);
             _fishMat = new Material(Shader.Find("Pancing/Fish") ?? vl) { name = "JumperMaterial" };
             _fishMat.SetFloat("_SwimAmp", 0.08f);
             _fishMat.SetFloat("_SwimFreq", 16f);
@@ -280,7 +284,7 @@ namespace Pancing.Render
                 go.transform.position = new Vector3(Random.Range(-260f, 260f), Random.Range(70f, 110f), Random.Range(120f, 320f));
                 go.AddComponent<MeshFilter>().sharedMesh = m;
                 var r = go.AddComponent<MeshRenderer>();
-                r.sharedMaterial = _mat;
+                r.sharedMaterial = _cloudMat;
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 r.receiveShadows = false;
                 _clouds.Add(go.transform);
@@ -327,7 +331,10 @@ namespace Pancing.Render
             // Rain greys them; night takes them down to a moonlit slate, or they
             // glow against a black sky.
             Color day = Color.Lerp(Color.white, new Color(0.62f, 0.64f, 0.68f), wet);
-            _mat.color = Color.Lerp(new Color(0.16f, 0.18f, 0.24f), day, Mathf.SmoothStep(0.05f, 0.6f, light));
+            // (Mathf.SmoothStep interpolates between its first two arguments; it is
+            // not the shader smoothstep, so ramp by hand.)
+            float k = Mathf.InverseLerp(0.05f, 0.6f, light);
+            _cloudMat.color = Color.Lerp(new Color(0.16f, 0.18f, 0.24f), day, k * k * (3f - 2f * k));
 
             UpdateJumper(dt, light);
 
@@ -409,6 +416,7 @@ namespace Pancing.Render
         {
             foreach (var m in _meshes) if (m != null) Destroy(m);
             if (_mat != null) Destroy(_mat);
+            if (_cloudMat != null) Destroy(_cloudMat);
             if (_fishMat != null) Destroy(_fishMat);
             if (_glowMat != null) Destroy(_glowMat);
             if (_glowTex != null) Destroy(_glowTex);
