@@ -7,7 +7,7 @@ using Pancing.Sim;
 
 namespace Pancing.UI
 {
-    public enum PanelTab { None, Shop, Bag, Travel }
+    public enum PanelTab { None, Shop, Bag, Travel, Records, Quests }
 
     /// <summary>
     /// The shop and the bag: the two screens where the player spends what they
@@ -30,6 +30,8 @@ namespace Pancing.UI
         private const float BagRowH = 64f;
         private const float TravelRowH = 104f;
         private const float HeaderH = 34f;
+        private const float RecordRowH = 66f;
+        private const float QuestRowH = 70f;
 
         private static readonly string[] SlotOrder = { "rod", "reel", "line", "lure" };
         private static readonly Dictionary<string, string> SlotNames = new Dictionary<string, string>
@@ -45,8 +47,8 @@ namespace Pancing.UI
         private Text _title, _moneyText, _hintText;
         private RectTransform _listContent;
         private ScrollRect _scroll;
-        private Image _shopTab, _bagTab, _travelTab;
-        private Text _shopTabText, _bagTabText, _travelTabText;
+        private Image _shopTab, _bagTab, _travelTab, _recordsTab, _questsTab;
+        private Text _shopTabText, _bagTabText, _travelTabText, _recordsTabText, _questsTabText;
 
         private PanelTab _tab = PanelTab.None;
         private readonly List<GameObject> _rows = new List<GameObject>();
@@ -89,18 +91,23 @@ namespace Pancing.UI
         private void BuildOpenButtons()
         {
             var bar = UiKit.Rect("OpenBar", transform, new Vector2(1, 1), new Vector2(1, 1),
-                                 new Vector2(-344, -100), new Vector2(-16, -54));
+                                 new Vector2(-544, -100), new Vector2(-16, -56));
             _openBar = bar.gameObject;
 
-            UiKit.Button("OpenShop", bar, "KEDAI (B)", 14,
-                new Vector2(0f, 0), new Vector2(0.333f, 1), new Vector2(0, 0), new Vector2(-3, 0),
-                () => Open(PanelTab.Shop), out _);
-            UiKit.Button("OpenBag", bar, "BEG (I)", 14,
-                new Vector2(0.333f, 0), new Vector2(0.667f, 1), new Vector2(3, 0), new Vector2(-3, 0),
-                () => Open(PanelTab.Bag), out _);
-            UiKit.Button("OpenTravel", bar, "JALAN (T)", 14,
-                new Vector2(0.667f, 0), new Vector2(1f, 1), new Vector2(3, 0), new Vector2(0, 0),
-                () => Open(PanelTab.Travel), out _);
+            var tabs = new (string id, string label, PanelTab tab)[]
+            {
+                ("OpenShop", "KEDAI (B)", PanelTab.Shop), ("OpenBag", "BEG (I)", PanelTab.Bag),
+                ("OpenTravel", "JALAN (T)", PanelTab.Travel), ("OpenRecords", "REKOD (K)", PanelTab.Records),
+                ("OpenQuests", "MISI (J)", PanelTab.Quests),
+            };
+            for (int i = 0; i < tabs.Length; i++)
+            {
+                var t = tabs[i];
+                float a0 = i / (float)tabs.Length, a1 = (i + 1) / (float)tabs.Length;
+                UiKit.Button(t.id, bar, t.label, 13,
+                    new Vector2(a0, 0), new Vector2(a1, 1), new Vector2(i == 0 ? 0 : 3, 0), new Vector2(i == tabs.Length - 1 ? 0 : -3, 0),
+                    () => Open(t.tab), out _);
+            }
         }
 
         private void BuildWindow()
@@ -117,9 +124,13 @@ namespace Pancing.UI
                                  new Vector2(-470, -300), new Vector2(470, 300));
             var winBg = win.gameObject.AddComponent<Image>();
             winBg.color = UiKit.PanelSolid;
+            UiKit.Rounded(winBg, 20f);
+            var winEdge = UiKit.Box("WindowEdge", win, UiKit.Edge, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            UiKit.Rounded(winEdge, 20f, ring: true);
 
-            _title = UiKit.Label("Title", win, "KEDAI", 24, TextAnchor.MiddleLeft,
+            _title = UiKit.Label("Title", win, "KEDAI", 26, TextAnchor.MiddleLeft,
                 new Vector2(0, 1), new Vector2(0.5f, 1), new Vector2(22, -54), new Vector2(0, -14));
+            _title.fontStyle = FontStyle.Bold;
 
             _moneyText = UiKit.Label("Money", win, "RM 0", 22, TextAnchor.MiddleRight,
                 new Vector2(0.5f, 1), new Vector2(1, 1), new Vector2(0, -54), new Vector2(-78, -14));
@@ -138,6 +149,12 @@ namespace Pancing.UI
             _travelTab = UiKit.Button("TabTravel", win, "JALAN", 16,
                 new Vector2(0, 1), new Vector2(0, 1), new Vector2(278, -94), new Vector2(398, -60),
                 () => Open(PanelTab.Travel), out _travelTabText);
+            _recordsTab = UiKit.Button("TabRecords", win, "REKOD", 16,
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(406, -94), new Vector2(526, -60),
+                () => Open(PanelTab.Records), out _recordsTabText);
+            _questsTab = UiKit.Button("TabQuests", win, "MISI", 16,
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(534, -94), new Vector2(654, -60),
+                () => Open(PanelTab.Quests), out _questsTabText);
 
             _listContent = UiKit.ScrollList("List", win,
                 new Vector2(0, 0), new Vector2(1, 1),
@@ -159,6 +176,8 @@ namespace Pancing.UI
             Game.Bus.On(EV.LureOut, _ => Refresh());
             Game.Bus.On(EV.SpotChange, _ => Refresh());
             Game.Bus.On(EV.Unlock, _ => Refresh());
+            Game.Bus.On(EV.Record, _ => Refresh());
+            Game.Bus.On(EV.QuestDone, _ => Refresh());
         }
 
         /* --- open / close -------------------------------------------------------- */
@@ -189,12 +208,16 @@ namespace Pancing.UI
             {
                 PanelTab.Shop => "KEDAI",
                 PanelTab.Bag => "BEG",
+                PanelTab.Records => "BUKU REKOD",
+                PanelTab.Quests => "MISI",
                 _ => "JALAN",
             };
             _hintText.text = tab switch
             {
                 PanelTab.Shop => "Umpan boleh dibeli berulang kali. Alat yang lebih kuat perlukan tahap lebih tinggi.",
                 PanelTab.Bag => "Pilih alat untuk dipakai. Umpan habis akan bertukar kembali kepada cacing.",
+                PanelTab.Records => "Rekod terbaik bagi setiap spesies. Yang belum ditangkap menunjukkan di mana mencarinya.",
+                PanelTab.Quests => "Misi selesai sendiri bila syaratnya dipenuhi — ganjaran terus masuk.",
                 _ => "Air lebih dalam bermakna ikan lebih besar — dan tali anda perlu tahan.",
             };
 
@@ -203,6 +226,8 @@ namespace Pancing.UI
             _shopTab.color = tab == PanelTab.Shop ? on : off;
             _bagTab.color = tab == PanelTab.Bag ? on : off;
             _travelTab.color = tab == PanelTab.Travel ? on : off;
+            _recordsTab.color = tab == PanelTab.Records ? on : off;
+            _questsTab.color = tab == PanelTab.Quests ? on : off;
 
             Refresh();
         }
@@ -225,6 +250,8 @@ namespace Pancing.UI
             if (UnityEngine.Input.GetKeyDown(KeyCode.B)) Toggle(PanelTab.Shop);
             if (UnityEngine.Input.GetKeyDown(KeyCode.I)) Toggle(PanelTab.Bag);
             if (UnityEngine.Input.GetKeyDown(KeyCode.T)) Toggle(PanelTab.Travel);
+            if (UnityEngine.Input.GetKeyDown(KeyCode.K)) Toggle(PanelTab.Records);
+            if (UnityEngine.Input.GetKeyDown(KeyCode.J)) Toggle(PanelTab.Quests);
             if (IsOpen && UnityEngine.Input.GetKeyDown(KeyCode.Escape)) Close();
         }
 
@@ -244,6 +271,14 @@ namespace Pancing.UI
             if (_tab == PanelTab.Travel)
             {
                 foreach (var spot in Game.Spots.All) AddTravelRow(spot, ref y);
+            }
+            else if (_tab == PanelTab.Records)
+            {
+                BuildRecords(ref y);
+            }
+            else if (_tab == PanelTab.Quests)
+            {
+                foreach (var q in Game.State.Quests) AddQuestRow(q, ref y);
             }
             else
             {
@@ -498,6 +533,116 @@ namespace Pancing.UI
             return names.Count > 0 ? string.Join(", ", names) : "—";
         }
 
+        /* --- records ------------------------------------------------------------- */
+
+        /// <summary>
+        /// The record book: one row per species, rarest last. A caught species shows
+        /// its best fish; an uncaught one shows where it lives and from what level,
+        /// which turns the book into the player's to-do list.
+        /// </summary>
+        private void BuildRecords(ref float y)
+        {
+            var st = Game.State;
+            var stats = st.Stats;
+            int total = 0, caught = 0;
+            foreach (var sp in Game.Species.All)
+            {
+                if (sp.RarityId == "junk") continue;
+                total++;
+                if (st.Records.ContainsKey(sp.Id)) caught++;
+            }
+
+            var sum = MakeRow(54f, ref y, 1f);
+            UiKit.Label("Summary", sum, $"Spesies {caught}/{total}   ·   Didaratkan {stats.Landed}   ·   Terberat {stats.HeaviestKg:0.00} kg   ·   Terpanjang {stats.LongestCm:0} cm",
+                15, TextAnchor.MiddleLeft, Vector2.zero, Vector2.one, new Vector2(14, 0), new Vector2(-14, 0)).fontStyle = FontStyle.Bold;
+            y += 6f;
+
+            var order = new List<Species>(Game.Species.All);
+            order.Sort((a, b) =>
+            {
+                int ja = a.RarityId == "junk" ? 1 : 0, jb = b.RarityId == "junk" ? 1 : 0;
+                if (ja != jb) return ja.CompareTo(jb);
+                int ra = Game.Species.RarityOf(a)?.Order ?? 0, rb = Game.Species.RarityOf(b)?.Order ?? 0;
+                return ra != rb ? ra.CompareTo(rb) : string.CompareOrdinal(a.Name, b.Name);
+            });
+
+            bool junkHeader = false;
+            AddHeader("IKAN", ref y);
+            foreach (var sp in order)
+            {
+                if (sp.RarityId == "junk" && !junkHeader) { junkHeader = true; y += 8f; AddHeader("SAMPAH", ref y); }
+                AddRecordRow(sp, ref y);
+            }
+        }
+
+        private void AddRecordRow(Species sp, ref float y)
+        {
+            var st = Game.State;
+            bool has = st.Records.TryGetValue(sp.Id, out var rec);
+            var rarity = Game.Species.RarityOf(sp);
+            Color rc = ProcNoise.HexToColor(rarity?.Color ?? "#ffffff");
+            var row = MakeRow(RecordRowH, ref y, has ? 1f : 0.5f);
+
+            // A rarity stripe down the left edge.
+            UiKit.Box("Stripe", row, has ? rc : new Color(rc.r, rc.g, rc.b, 0.35f),
+                new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 6), new Vector2(5, -6), 2f);
+
+            var name = UiKit.Label("Name", row, has ? sp.Name : sp.Name + "  (belum)", 18, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.6f, 1), new Vector2(16, -30), new Vector2(0, -6));
+            name.color = has ? rc : UiKit.InkDim;
+            name.fontStyle = FontStyle.Bold;
+            UiKit.Label("Latin", row, $"{sp.Latin}  ·  {rarity?.Label ?? ""}", 12, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.6f, 1), new Vector2(16, -50), new Vector2(0, -32)).color = UiKit.InkDim;
+
+            int n = st.Stats.BySpecies.TryGetValue(sp.Id, out int c) ? c : 0;
+            string right;
+            if (has)
+            {
+                string spot = Game.Spots.ById.TryGetValue(rec.Spot ?? "", out var s) ? s.Name : "";
+                right = $"{rec.LengthCm:0.0} cm  ·  {rec.MassKg:0.000} kg{(rec.Trophy ? "  ★" : "")}\n×{n} ditangkap  ·  {spot}";
+            }
+            else
+            {
+                right = $"Di: {WhereFound(sp)}\nDari Tahap {sp.MinLevel}";
+            }
+            var r = UiKit.Label("Best", row, right, 14, TextAnchor.MiddleRight,
+                new Vector2(0.55f, 0), new Vector2(1, 1), new Vector2(0, 4), new Vector2(-16, -4));
+            r.color = has ? UiKit.Ink : UiKit.InkDim;
+        }
+
+        private static string WhereFound(Species sp)
+        {
+            var names = new List<string>();
+            foreach (var spot in Game.Spots.All)
+                foreach (var kv in spot.Pool)
+                    if (kv.Key == sp.Id) { names.Add(spot.Name); break; }
+            return names.Count > 0 ? string.Join(", ", names) : "—";
+        }
+
+        /* --- quests -------------------------------------------------------------- */
+
+        private void AddQuestRow(Quest q, ref float y)
+        {
+            var row = MakeRow(QuestRowH, ref y, q.Done ? 1f : 0.75f);
+            UiKit.Box("Tick", row, q.Done ? UiKit.Accent : new Color(1f, 1f, 1f, 0.12f),
+                new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(14, -13), new Vector2(40, 13), 13f);
+            if (q.Done)
+                UiKit.Label("TickMark", row, "✓", 18, TextAnchor.MiddleCenter,
+                    new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(14, -13), new Vector2(40, 13)).color = new Color(0.05f, 0.12f, 0.1f);
+
+            var name = UiKit.Label("Name", row, q.Name, 18, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.7f, 1), new Vector2(54, -32), new Vector2(0, -8));
+            name.fontStyle = FontStyle.Bold;
+            name.color = q.Done ? UiKit.Accent : UiKit.Ink;
+            UiKit.Label("Desc", row, q.Desc, 13, TextAnchor.UpperLeft,
+                new Vector2(0, 1), new Vector2(0.75f, 1), new Vector2(54, -54), new Vector2(0, -34)).color = UiKit.InkDim;
+
+            var reward = UiKit.Label("Reward", row, q.Done ? "SELESAI" : $"+RM {q.RewardMoney:0}  ·  +{q.RewardXp:0} XP",
+                15, TextAnchor.MiddleRight, new Vector2(0.6f, 0), new Vector2(1, 1), new Vector2(0, 0), new Vector2(-16, 0));
+            reward.color = q.Done ? UiKit.Accent : UiKit.Gold;
+            reward.fontStyle = FontStyle.Bold;
+        }
+
         private RectTransform MakeRow(float height, ref float y, float alpha)
         {
             var rt = UiKit.Rect("Row", _listContent, new Vector2(0, 1), new Vector2(1, 1),
@@ -505,6 +650,7 @@ namespace Pancing.UI
             var bg = rt.gameObject.AddComponent<Image>();
             bg.color = new Color(1f, 1f, 1f, 0.05f * alpha + 0.02f);
             bg.raycastTarget = false;
+            UiKit.Rounded(bg, 10f);
             _rows.Add(rt.gameObject);
             y += height;
             return rt;

@@ -219,6 +219,8 @@ namespace Pancing.Core
             _panels = PanelSystem.Create(transform, _input, _hud);
             _audio = AudioService.Create(transform);
             _life = AmbientLife.Create(transform, _water, _audio, _camera != null ? _camera.Camera : null);
+            if (DevArgs.Panel != null && System.Enum.TryParse<PanelTab>(DevArgs.Panel, true, out var tab))
+                _panels.Open(tab);
 
             QualitySettings.shadowDistance = highQuality ? 45f : 0f;
         }
