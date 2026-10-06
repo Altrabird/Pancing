@@ -66,6 +66,11 @@ namespace Pancing.UI
                 new Vector2(-500, 18), new Vector2(500, 56));
             tag.color = UiKit.Ink;
 
+            var credit = UiKit.Label("Credit", transform, "Developed by Harsidi Junick", 16, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-400, -4), new Vector2(400, 18));
+            credit.color = UiKit.Gold;
+            credit.fontStyle = FontStyle.Italic;
+
             var st = Game.State;
             bool returning = st != null && (st.Stats.Landed > 0 || st.Level > 1);
             string label = returning ? "SAMBUNG MEMANCING" : "MULA MEMANCING";
