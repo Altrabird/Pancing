@@ -48,3 +48,6 @@ shared/parity/.build/
 # NOT anchored with a leading slash: a copy has already turned up at
 # unity/Pancing/My project/ as well, which a root-anchored rule missed.
 My project/
+
+# Blender auto-backups
+*.blend1
