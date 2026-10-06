@@ -20,6 +20,7 @@ namespace Pancing.Core
         public static readonly float ShotDelay = float.TryParse(Get("-shotdelay"), out var d) ? d : 7f;
         public static readonly float Hour = float.TryParse(Get("-hour"), out var h) ? h : -1f;
         public static readonly bool AutoFish = Has("-autofish");
+        public static readonly string Weather = Get("-weather");
 
         /// <summary>With -autofish, -shot fires once a fight has run this long
         /// (falls back to -shotdelay x 4 if nothing bites).</summary>
@@ -29,7 +30,7 @@ namespace Pancing.Core
         public static readonly bool ShotCatch = Has("-shotcatch");
         public static float LandedAt = -1f;
 
-        public static bool Active => Spot != null || ShotPath != null || Hour >= 0f || AutoFish;
+        public static bool Active => Spot != null || ShotPath != null || Hour >= 0f || AutoFish || Weather != null;
 
         private static string Get(string key)
         {

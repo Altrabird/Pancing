@@ -1,4 +1,5 @@
 using UnityEngine;
+using Pancing.Audio;
 using Pancing.Controls;
 using Pancing.Render;
 using Pancing.Sim;
@@ -44,6 +45,8 @@ namespace Pancing.Core
         private AimArrow _aim;
         private Hud _hud;
         private PanelSystem _panels;
+        private AudioService _audio;
+        private AmbientLife _life;
 
         private void Start()
         {
@@ -120,6 +123,12 @@ namespace Pancing.Core
             Game.World = new World(Game.Rng.Fork("world"), Game.Bus, Game.Spots, Game.State.Spot);
             Game.Fishing = new FishingGame(Game.Rng, Game.Bus, Game.State, Game.World, Game.Species);
             if (DevArgs.Hour >= 0f) Game.World.Hour = DevArgs.Hour;
+            if (DevArgs.Weather != null)
+            {
+                var w = Game.Spots.GetWeather(DevArgs.Weather);
+                Game.World.Weather = w;
+                Game.World.PrevWeather = w;
+            }
         }
 
         private void LoadSave()
@@ -208,6 +217,8 @@ namespace Pancing.Core
             _aim = AimArrow.Create(transform);
             _hud = Hud.Create(transform, _input);
             _panels = PanelSystem.Create(transform, _input, _hud);
+            _audio = AudioService.Create(transform);
+            _life = AmbientLife.Create(transform, _water, _audio, _camera != null ? _camera.Camera : null);
 
             QualitySettings.shadowDistance = highQuality ? 45f : 0f;
         }
@@ -309,6 +320,8 @@ namespace Pancing.Core
             _aim?.Apply(tm, Game.Fishing, _input.AimYaw, _water);
             _camera?.Apply(tm, _input.AimYaw, _tackle != null ? _tackle.LurePos : Vector3.zero, dt);
             _hud?.Apply(tm, Game.World, Game.State, dt);
+            _audio?.Apply(tm, Game.World, Game.State.Spot, dt);
+            _life?.Apply(Game.World, Game.State.Spot, dt);
 
             _autosaveTimer += dt;
             if (_autosaveTimer >= AutosaveInterval) { _autosaveTimer = 0f; Save(); }
