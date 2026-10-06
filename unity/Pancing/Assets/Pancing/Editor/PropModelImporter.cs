@@ -20,6 +20,18 @@ namespace Pancing.EditorTools
             importer.importAnimation = false;
             importer.importCameras = false;
             importer.importLights = false;
+
+            // The angler is skinned. Generic keeps the SkinnedMeshRenderer (None
+            // flattens it to a static mesh); no clips, the pose is driven from code
+            // (AnglerView). Baking the axis conversion keeps bone frames sane.
+            if (assetPath.EndsWith("/angler.fbx"))
+            {
+                importer.animationType = ModelImporterAnimationType.Generic;
+                importer.avatarSetup = ModelImporterAvatarSetup.NoAvatar;
+                importer.bakeAxisConversion = true;
+                importer.importBlendShapes = false;
+                importer.isReadable = false;
+            }
         }
     }
 }
