@@ -8,7 +8,7 @@ namespace Pancing.Render
     /// <summary>
     /// Builds the world around the water: lake bed, banks, sky dome, vegetation
     /// and the sun. Everything is generated from the spot record — there are no
-    /// prefabs and no textures.
+    /// prefabs and no textures (the props from PropScatter are vertex-coloured too).
     ///
     /// The lake bed is lofted from Game.GroundHeight, which wraps the same
     /// spot.DepthAt() the catch table scores against. That is the whole reason the
@@ -24,7 +24,7 @@ namespace Pancing.Render
         private Transform _scatter;
         private MeshRenderer _skyRenderer;
         private Material _terrainMat, _skyMat, _plantMat;
-        private Mesh _terrainMesh, _skyMesh;
+        private Mesh _terrainMesh, _skyMesh, _propMesh;
         private Spot _spot;
 
         private Color _skyTop, _skyHorizon;
@@ -55,6 +55,7 @@ namespace Pancing.Render
             BuildSky(spot);
             BuildSun();
             BuildScatter(spot);
+            _propMesh = PropScatter.Build(transform, spot, _plantMat);
         }
 
         /* --- lake bed and banks ------------------------------------------------ */
@@ -468,6 +469,7 @@ namespace Pancing.Render
             if (_plantMat != null) Destroy(_plantMat);
             if (_terrainMesh != null) Destroy(_terrainMesh);
             if (_skyMesh != null) Destroy(_skyMesh);
+            if (_propMesh != null) Destroy(_propMesh);
         }
     }
 }

@@ -63,6 +63,12 @@ Shader "Pancing/VertexLit"
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.color = v.color * _Color;
+                // Vertex colours are authored as sRGB hex values. In a Linear
+                // colour-space project they must be decoded, or every surface
+                // renders washed out (that was the whole game's look until now).
+                #ifndef UNITY_COLORSPACE_GAMMA
+                o.color.rgb = GammaToLinearSpace(o.color.rgb);
+                #endif
                 o.normal = UnityObjectToWorldNormal(v.normal);
                 o.world = mul(unity_ObjectToWorld, v.vertex).xyz;
                 UNITY_TRANSFER_FOG(o, o.pos);

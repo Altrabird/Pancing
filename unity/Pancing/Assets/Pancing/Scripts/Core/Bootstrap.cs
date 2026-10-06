@@ -115,9 +115,11 @@ namespace Pancing.Core
 
             Game.State = new PlayerState(Game.Bus, Game.Gear, Game.Species, Game.Spots);
             LoadSave();
+            if (DevArgs.Spot != null && Game.Spots.ById.ContainsKey(DevArgs.Spot)) Game.State.SpotId = DevArgs.Spot;
 
             Game.World = new World(Game.Rng.Fork("world"), Game.Bus, Game.Spots, Game.State.Spot);
             Game.Fishing = new FishingGame(Game.Rng, Game.Bus, Game.State, Game.World, Game.Species);
+            if (DevArgs.Hour >= 0f) Game.World.Hour = DevArgs.Hour;
         }
 
         private void LoadSave()
@@ -132,6 +134,7 @@ namespace Pancing.Core
 
         private void Save()
         {
+            if (DevArgs.Active) return;   // test runs never touch the real save
             try
             {
                 PlayerPrefs.SetString(PlayerState.SaveKey, Game.State.ToJson());
@@ -303,6 +306,9 @@ namespace Pancing.Core
 
             _autosaveTimer += dt;
             if (_autosaveTimer >= AutosaveInterval) { _autosaveTimer = 0f; Save(); }
+
+            DevArgs.Tick(this);
+            DevArgs.TickQuit();
         }
 
         private bool _wasCastHeld;
