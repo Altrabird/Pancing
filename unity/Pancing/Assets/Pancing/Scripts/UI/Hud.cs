@@ -75,8 +75,9 @@ namespace Pancing.UI
         private static readonly Color ZoneGood = new Color(0.38f, 0.78f, 0.44f);
         private static readonly Color ZoneHigh = new Color(0.95f, 0.72f, 0.20f);
         private static readonly Color ZoneDanger = new Color(0.90f, 0.28f, 0.24f);
-        private static readonly Color Panel = new Color(0.05f, 0.08f, 0.09f, 0.62f);
-        private static readonly Color Ink = new Color(0.93f, 0.96f, 0.95f);
+        private static readonly Color Panel = UiKit.Panel;
+        private static readonly Color Ink = UiKit.Ink;
+        private Image _cardEdge;
 
         public static Hud Create(Transform parent, InputService input)
         {
@@ -131,8 +132,9 @@ namespace Pancing.UI
             => UiKit.Rect(name, parent, anchorMin, anchorMax, offsetMin, offsetMax);
 
         private Image Box(string name, Transform parent, Color color,
-                          Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
-            => UiKit.Box(name, parent, color, anchorMin, anchorMax, offsetMin, offsetMax);
+                          Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax,
+                          float radius = 0f)
+            => UiKit.Box(name, parent, color, anchorMin, anchorMax, offsetMin, offsetMax, radius);
 
         private Text Label(string name, Transform parent, string text, int size, TextAnchor align,
                            Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
@@ -148,58 +150,91 @@ namespace Pancing.UI
 
         private void BuildTopBar()
         {
-            var bar = Box("TopBar", transform, Panel, new Vector2(0, 1), new Vector2(1, 1),
-                          new Vector2(0, -46), new Vector2(0, 0));
+            // Three floating pills rather than a full-width strip, so the sky and
+            // the far bank stay visible. The shop/bag/travel buttons sit under the
+            // right-hand pill (PanelSystem).
+            var left = UiKit.Card("TimePill", transform, Panel, new Vector2(0, 1), new Vector2(0, 1),
+                                  new Vector2(14, -52), new Vector2(330, -10), 21f);
+            _clockText = Label("Clock", left.transform, "08:36", 22, TextAnchor.MiddleLeft,
+                new Vector2(0, 0), new Vector2(0, 1), new Vector2(18, 0), new Vector2(100, 0));
+            _clockText.fontStyle = FontStyle.Bold;
+            _weatherText = Label("Weather", left.transform, "", 15, TextAnchor.MiddleLeft,
+                new Vector2(0, 0), new Vector2(1, 1), new Vector2(98, 0), new Vector2(-14, 0));
+            _weatherText.color = UiKit.InkDim;
 
-            _clockText = Label("Clock", bar.transform, "08:36", 20, TextAnchor.MiddleLeft,
-                new Vector2(0, 0), new Vector2(0, 1), new Vector2(16, 0), new Vector2(140, 0));
-            _weatherText = Label("Weather", bar.transform, "Cerah", 16, TextAnchor.MiddleLeft,
-                new Vector2(0, 0), new Vector2(0, 1), new Vector2(150, 0), new Vector2(340, 0));
-            _spotText = Label("Spot", bar.transform, "", 16, TextAnchor.MiddleCenter,
-                new Vector2(0.5f, 0), new Vector2(0.5f, 1), new Vector2(-160, 0), new Vector2(160, 0));
-            _levelText = Label("Level", bar.transform, "Tahap 1", 16, TextAnchor.MiddleRight,
-                new Vector2(1, 0), new Vector2(1, 1), new Vector2(-330, 0), new Vector2(-180, 0));
-            _moneyText = Label("Money", bar.transform, "RM 120", 20, TextAnchor.MiddleRight,
-                new Vector2(1, 0), new Vector2(1, 1), new Vector2(-170, 0), new Vector2(-16, 0));
+            var mid = UiKit.Card("SpotPill", transform, Panel, new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+                                 new Vector2(-160, -52), new Vector2(160, -10), 21f);
+            _spotText = Label("Spot", mid.transform, "", 19, TextAnchor.MiddleCenter,
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            _spotText.fontStyle = FontStyle.Bold;
 
-            _xpFill = Bar("Xp", bar.transform, new Color(1, 1, 1, 0.12f), new Color(0.42f, 0.72f, 0.95f),
-                new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, -4), new Vector2(0, 0), out _);
+            var right = UiKit.Card("PursePill", transform, Panel, new Vector2(1, 1), new Vector2(1, 1),
+                                   new Vector2(-344, -50), new Vector2(-16, -10), 20f);
+            _levelText = Label("Level", right.transform, "Tahap 1", 15, TextAnchor.MiddleLeft,
+                new Vector2(0, 0), new Vector2(0, 1), new Vector2(16, 0), new Vector2(96, 0));
+            _levelText.fontStyle = FontStyle.Bold;
+            _xpFill = Bar("Xp", right.transform, UiKit.Track, new Color(0.42f, 0.72f, 0.95f),
+                new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(96, -5), new Vector2(-122, 5), out _);
+            _moneyText = Label("Money", right.transform, "RM 120", 20, TextAnchor.MiddleRight,
+                new Vector2(1, 0), new Vector2(1, 1), new Vector2(-118, 0), new Vector2(-16, 0));
+            _moneyText.color = UiKit.Gold;
+            _moneyText.fontStyle = FontStyle.Bold;
         }
 
         private void BuildTensionPanel()
         {
             // Bottom-left, big. This is the thing the player stares at.
-            var panel = Box("TensionPanel", transform, Panel, new Vector2(0, 0), new Vector2(0, 0),
-                            new Vector2(16, 16), new Vector2(430, 150));
+            var panel = UiKit.Card("TensionPanel", transform, Panel, new Vector2(0, 0), new Vector2(0, 0),
+                                   new Vector2(16, 16), new Vector2(404, 150), 16f);
 
-            Label("TensionCap", panel.transform, "TEGANGAN", 13, TextAnchor.MiddleLeft,
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(14, -26), new Vector2(-14, -6));
+            var cap = Label("TensionCap", panel.transform, "TEGANGAN", 13, TextAnchor.MiddleLeft,
+                new Vector2(0, 1), new Vector2(0.5f, 1), new Vector2(16, -28), new Vector2(0, -8));
+            cap.color = UiKit.InkDim;
+            cap.fontStyle = FontStyle.Bold;
+            _tensionLabel = Label("TensionVal", panel.transform, "0 N", 15, TextAnchor.MiddleRight,
+                new Vector2(0.5f, 1), new Vector2(1, 1), new Vector2(0, -28), new Vector2(-16, -8));
+            _tensionLabel.fontStyle = FontStyle.Bold;
 
-            _tensionFill = Bar("Tension", panel.transform, new Color(0, 0, 0, 0.45f), ZoneGood,
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(14, -62), new Vector2(-14, -30), out _tensionBack);
+            _tensionFill = Bar("Tension", panel.transform, UiKit.Track, ZoneGood,
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(16, -62), new Vector2(-16, -32), out _tensionBack);
+
+            // The zones painted faintly on the track itself (RodSystem's thresholds),
+            // so "how close to red" is visible before the fill gets there.
+            Zone(_tensionBack.transform, 0f, (float)RodSystem.ZoneSlack, ZoneSlack);
+            Zone(_tensionBack.transform, (float)RodSystem.ZoneSlack, (float)RodSystem.ZoneGood, ZoneGood);
+            Zone(_tensionBack.transform, (float)RodSystem.ZoneGood, (float)RodSystem.ZoneHigh, ZoneHigh);
+            Zone(_tensionBack.transform, (float)RodSystem.ZoneHigh, 1f, ZoneDanger);
+            _tensionFill.transform.SetAsLastSibling();
 
             // The drag marker rides the same scale as the tension bar, so "my clutch
             // is set above what this line can take" is a thing you can SEE rather
             // than a number you have to convert.
             _dragMarker = Box("DragMarker", _tensionBack.transform, new Color(1f, 0.95f, 0.55f),
-                new Vector2(0, 0), new Vector2(0, 1), new Vector2(-2, -3), new Vector2(2, 3));
+                new Vector2(0, 0), new Vector2(0, 1), new Vector2(-2, 0), new Vector2(2, 0));
 
-            _tensionLabel = Label("TensionVal", panel.transform, "0 N", 15, TextAnchor.MiddleLeft,
-                new Vector2(0, 1), new Vector2(0.5f, 1), new Vector2(14, -84), new Vector2(0, -64));
-            _dragLabel = Label("DragVal", panel.transform, "Klac 55%", 15, TextAnchor.MiddleRight,
-                new Vector2(0.5f, 1), new Vector2(1, 1), new Vector2(0, -84), new Vector2(-14, -64));
+            _dragLabel = Label("DragVal", panel.transform, "Klac 55%", 14, TextAnchor.MiddleRight,
+                new Vector2(0.5f, 1), new Vector2(1, 1), new Vector2(0, -84), new Vector2(-16, -66));
+            var dragCap = Label("DragCap", panel.transform, "Penanda kuning = klac", 12, TextAnchor.MiddleLeft,
+                new Vector2(0, 1), new Vector2(0.5f, 1), new Vector2(16, -84), new Vector2(0, -66));
+            dragCap.color = UiKit.InkDim;
 
-            Label("IntegrityCap", panel.transform, "Tali", 12, TextAnchor.MiddleLeft,
-                new Vector2(0, 1), new Vector2(0, 1), new Vector2(14, -106), new Vector2(60, -88));
-            _integrityFill = Bar("Integrity", panel.transform, new Color(0, 0, 0, 0.45f),
+            Label("IntegrityCap", panel.transform, "Tali", 13, TextAnchor.MiddleLeft,
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(16, -108), new Vector2(62, -90));
+            _integrityFill = Bar("Integrity", panel.transform, UiKit.Track,
                 new Color(0.55f, 0.85f, 0.95f),
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(62, -104), new Vector2(-14, -90), out _);
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(62, -105), new Vector2(-16, -93), out _);
 
-            Label("HookCap", panel.transform, "Kail", 12, TextAnchor.MiddleLeft,
-                new Vector2(0, 1), new Vector2(0, 1), new Vector2(14, -130), new Vector2(60, -112));
-            _hookFill = Bar("Hook", panel.transform, new Color(0, 0, 0, 0.45f),
+            Label("HookCap", panel.transform, "Kail", 13, TextAnchor.MiddleLeft,
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(16, -128), new Vector2(62, -110));
+            _hookFill = Bar("Hook", panel.transform, UiKit.Track,
                 new Color(0.95f, 0.72f, 0.42f),
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(62, -128), new Vector2(-14, -114), out _);
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(62, -125), new Vector2(-16, -113), out _);
+        }
+
+        private void Zone(Transform track, float from, float to, Color c)
+        {
+            Box("Zone", track, new Color(c.r, c.g, c.b, 0.22f),
+                new Vector2(from, 0), new Vector2(to, 1), Vector2.zero, Vector2.zero);
         }
 
         private void BuildCastMeter()
@@ -209,6 +244,8 @@ namespace Pancing.UI
             var track = _castRow.gameObject.AddComponent<Image>();
             track.color = new Color(0, 0, 0, 0.55f);
             track.raycastTarget = false;
+            UiKit.Rounded(track, 20f);
+            _castRow.gameObject.AddComponent<Mask>().showMaskGraphic = true;
 
             _castFill = Box("CastFill", _castRow, new Color(0.55f, 0.82f, 0.62f),
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
@@ -224,19 +261,20 @@ namespace Pancing.UI
             _castOverload = Box("Overload", _castRow, new Color(0.92f, 0.35f, 0.25f, 0.85f),
                 new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0), new Vector2(0, 0));
 
-            Label("CastHint", _castRow, "TAHAN untuk lontar", 13, TextAnchor.MiddleCenter,
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, 2), new Vector2(0, 22));
+            // Outside the masked track, or the mask would clip it away.
+            var hint = Label("CastHint", transform, "LEPAS di jalur putih", 14, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-220, 64), new Vector2(220, 86));
+            hint.fontStyle = FontStyle.Bold;
+            _castHint = hint.gameObject;
+            _castHint.SetActive(false);
 
             _castRow.gameObject.SetActive(false);
         }
 
         private void BuildBitePanel()
         {
-            _biteRow = Rect("BitePanel", transform, new Vector2(1, 0), new Vector2(1, 0),
-                            new Vector2(-330, 16), new Vector2(-16, 176));
-            var bg = _biteRow.gameObject.AddComponent<Image>();
-            bg.color = Panel;
-            bg.raycastTarget = false;
+            _biteRow = (RectTransform)UiKit.Card("BitePanel", transform, Panel, new Vector2(1, 0), new Vector2(1, 0),
+                            new Vector2(-344, 16), new Vector2(-16, 176), 16f).transform;
 
             _biteState = Label("BiteState", _biteRow, "Menunggu", 15, TextAnchor.MiddleLeft,
                 new Vector2(0, 1), new Vector2(1, 1), new Vector2(14, -28), new Vector2(-14, -6));
@@ -260,14 +298,14 @@ namespace Pancing.UI
 
             // The hookset window: big, central, and impossible to miss, because a
             // Toman gives you 320 milliseconds.
-            var windowRow = Rect("Window", transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1),
-                                 new Vector2(-190, -150), new Vector2(190, -70));
-            var wbg = windowRow.gameObject.AddComponent<Image>();
-            wbg.color = new Color(0.06f, 0.09f, 0.10f, 0.80f);
-            wbg.raycastTarget = false;
+            var windowRow = (RectTransform)UiKit.Card("Window", transform, new Color(0.10f, 0.07f, 0.02f, 0.86f),
+                                 new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+                                 new Vector2(-210, -214), new Vector2(210, -124), 18f).transform;
+            windowRow.Find("WindowEdge").GetComponent<Image>().color = new Color(1f, 0.78f, 0.30f, 0.65f);
             _windowLabel = Label("WindowLabel", windowRow, "SENTAP!", 34, TextAnchor.MiddleCenter,
                 new Vector2(0, 0.35f), new Vector2(1, 1), Vector2.zero, Vector2.zero);
             _windowLabel.color = new Color(1f, 0.86f, 0.35f);
+            _windowLabel.fontStyle = FontStyle.Bold;
             _windowFill = Bar("WindowBar", windowRow, new Color(0, 0, 0, 0.5f), new Color(1f, 0.72f, 0.25f),
                 new Vector2(0, 0), new Vector2(1, 0.32f), new Vector2(12, 10), new Vector2(-12, -4), out _);
             windowRow.gameObject.SetActive(false);
@@ -278,6 +316,7 @@ namespace Pancing.UI
         }
 
         private RectTransform _windowRow;
+        private GameObject _castHint;
         private CanvasGroup _edgeFlash;
 
         // fight bar
@@ -329,48 +368,57 @@ namespace Pancing.UI
             // Sits ABOVE the tension panel, which occupies the bottom-left corner
             // out to x = 430 and up to y = 150. The first placement put the fight
             // bar at y 84..188 and the two drew straight through each other.
-            _fightRow = Rect("FightBar", transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-                             new Vector2(-270, 160), new Vector2(270, 264));
-            var bg = _fightRow.gameObject.AddComponent<Image>();
-            bg.color = Panel;
-            bg.raycastTarget = false;
+            // Bottom-right, in the bite panel's place (the two never show together),
+            // so nothing sits over the angler in the middle of the screen.
+            _fightRow = (RectTransform)UiKit.Card("FightBar", transform, Panel, new Vector2(1, 0), new Vector2(1, 0),
+                             new Vector2(-424, 16), new Vector2(-16, 150), 16f).transform;
 
-            _fishForce = Label("FishForce", _fightRow, "IKAN", 14, TextAnchor.MiddleLeft,
-                new Vector2(0, 1), new Vector2(0.5f, 1), new Vector2(14, -26), new Vector2(0, -6));
+            _fishForce = Label("FishForce", _fightRow, "IKAN", 15, TextAnchor.MiddleLeft,
+                new Vector2(0, 1), new Vector2(0.5f, 1), new Vector2(16, -28), new Vector2(0, -8));
+            _fishForce.fontStyle = FontStyle.Bold;
             _fishForce.color = new Color(0.95f, 0.55f, 0.45f);
 
-            _yourForce = Label("YourForce", _fightRow, "ANDA", 14, TextAnchor.MiddleRight,
-                new Vector2(0.5f, 1), new Vector2(1, 1), new Vector2(0, -26), new Vector2(-14, -6));
+            _yourForce = Label("YourForce", _fightRow, "ANDA", 15, TextAnchor.MiddleRight,
+                new Vector2(0.5f, 1), new Vector2(1, 1), new Vector2(0, -28), new Vector2(-16, -8));
+            _yourForce.fontStyle = FontStyle.Bold;
             _yourForce.color = new Color(0.55f, 0.85f, 0.70f);
 
             // The tug track. Left = the fish is taking line, right = you are gaining.
             _tugTrack = Box("TugTrack", _fightRow, new Color(0, 0, 0, 0.5f),
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(14, -60), new Vector2(-14, -30));
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(16, -60), new Vector2(-16, -32), 10f);
+            // Red half = the fish is winning, green half = you are.
+            Box("TugFish", _tugTrack.transform, new Color(0.95f, 0.45f, 0.38f, 0.16f),
+                new Vector2(0, 0), new Vector2(0.5f, 1), Vector2.zero, Vector2.zero, 10f);
+            Box("TugYou", _tugTrack.transform, new Color(0.45f, 0.90f, 0.62f, 0.16f),
+                new Vector2(0.5f, 0), new Vector2(1, 1), Vector2.zero, Vector2.zero, 10f);
 
             // A centre tick, so "level" is a place rather than a guess.
             Box("TugCentre", _tugTrack.transform, new Color(1, 1, 1, 0.30f),
                 new Vector2(0.5f, 0), new Vector2(0.5f, 1), new Vector2(-1, 2), new Vector2(1, -2));
 
             _tugMarker = (RectTransform)Box("TugMarker", _tugTrack.transform, Color.white,
-                new Vector2(0.5f, 0), new Vector2(0.5f, 1), new Vector2(-4, 1), new Vector2(4, -1)).transform;
+                new Vector2(0.5f, 0), new Vector2(0.5f, 1), new Vector2(-6, 2), new Vector2(6, -2), 6f).transform;
 
-            _tugVerdict = Label("TugVerdict", _fightRow, "", 13, TextAnchor.MiddleCenter,
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(14, -80), new Vector2(-14, -60));
+            _tugVerdict = Label("TugVerdict", _fightRow, "", 14, TextAnchor.MiddleCenter,
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(16, -82), new Vector2(-16, -62));
+            _tugVerdict.fontStyle = FontStyle.Bold;
 
             // Reel: asked vs delivered, in one track.
-            Label("ReelCap", _fightRow, "KARAU", 12, TextAnchor.MiddleLeft,
-                new Vector2(0, 1), new Vector2(0, 1), new Vector2(14, -102), new Vector2(76, -82));
+            Label("ReelCap", _fightRow, "KARAU", 13, TextAnchor.MiddleLeft,
+                new Vector2(0, 1), new Vector2(0, 1), new Vector2(16, -114), new Vector2(76, -94));
 
             _reelAsked = Bar("ReelAsked", _fightRow, new Color(0, 0, 0, 0.5f), new Color(0.42f, 0.55f, 0.60f),
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(78, -100), new Vector2(-62, -84), out var reelTrack);
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(78, -111), new Vector2(-150, -97), out var reelTrack);
             _reelGot = Box("ReelGot", reelTrack.transform, new Color(0.55f, 0.88f, 0.72f),
                 new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 3), new Vector2(0, -3));
             _reelGot.type = Image.Type.Filled;
             _reelGot.fillMethod = Image.FillMethod.Horizontal;
             _reelGot.fillAmount = 0f;
 
+            // Wide enough for "KLAC TERGELINCIR" — it used to overrun the bar.
             _reelPct = Label("ReelPct", _fightRow, "", 13, TextAnchor.MiddleRight,
-                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-58, -102), new Vector2(-14, -82));
+                new Vector2(1, 1), new Vector2(1, 1), new Vector2(-146, -114), new Vector2(-16, -94));
+            _reelPct.fontStyle = FontStyle.Bold;
 
             _fightRow.gameObject.SetActive(false);
         }
@@ -430,40 +478,47 @@ namespace Pancing.UI
 
         private void BuildToast()
         {
-            var rt = Rect("Toast", transform, new Vector2(0.5f, 1), new Vector2(0.5f, 1),
-                          new Vector2(-260, -108), new Vector2(260, -58));
+            var rt = (RectTransform)UiKit.Card("Toast", transform, new Color(0.04f, 0.08f, 0.10f, 0.88f),
+                          new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+                          new Vector2(-260, -112), new Vector2(260, -66), 23f).transform;
             _toastGroup = rt.gameObject.AddComponent<CanvasGroup>();
             _toastGroup.alpha = 0f;
             _toastGroup.blocksRaycasts = false;
-            var bg = rt.gameObject.AddComponent<Image>();
-            bg.color = new Color(0.06f, 0.09f, 0.10f, 0.85f);
-            bg.raycastTarget = false;
             _toastText = Label("ToastText", rt, "", 18, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
         }
 
         private void BuildCatchCard()
         {
-            var rt = Rect("CatchCard", transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                          new Vector2(-230, -170), new Vector2(230, 170));
+            var card = UiKit.Card("CatchCard", transform, new Color(0.04f, 0.08f, 0.10f, 0.95f),
+                          new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                          new Vector2(-250, -190), new Vector2(250, 190), 22f);
+            var rt = (RectTransform)card.transform;
+            _cardEdge = rt.Find("CatchCardEdge").GetComponent<Image>();
             _cardGroup = rt.gameObject.AddComponent<CanvasGroup>();
             _cardGroup.alpha = 0f;
             _cardGroup.blocksRaycasts = false;
-            var bg = rt.gameObject.AddComponent<Image>();
-            bg.color = new Color(0.05f, 0.08f, 0.09f, 0.94f);
-            bg.raycastTarget = false;
 
-            _cardTitle = Label("CardTitle", rt, "", 26, TextAnchor.MiddleCenter,
-                new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, -52), new Vector2(-12, -10));
+            var dapat = Label("CardKicker", rt, "DAPAT!", 14, TextAnchor.MiddleCenter,
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, -30), new Vector2(-12, -12));
+            dapat.color = UiKit.Gold;
+            dapat.fontStyle = FontStyle.Bold;
+            _cardTitle = Label("CardTitle", rt, "", 28, TextAnchor.MiddleCenter,
+                new Vector2(0, 1), new Vector2(1, 1), new Vector2(12, -64), new Vector2(-12, -30));
+            _cardTitle.fontStyle = FontStyle.Bold;
 
-            var portrait = Rect("Portrait", rt, new Vector2(0.5f, 1), new Vector2(0.5f, 1),
-                                new Vector2(-150, -232), new Vector2(150, -60));
+            // The fish on its turntable, framed in a rounded window.
+            var frame = Box("PortraitFrame", rt, new Color(0.06f, 0.10f, 0.12f, 1f),
+                new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(-157, -250), new Vector2(157, -70), 14f);
+            frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            var portrait = Rect("Portrait", frame.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             _cardPortrait = portrait.gameObject.AddComponent<RawImage>();
             _cardPortrait.raycastTarget = false;
 
-            _cardStats = Label("CardStats", rt, "", 17, TextAnchor.UpperCenter,
-                new Vector2(0, 0), new Vector2(1, 0), new Vector2(12, 76), new Vector2(-12, 128));
-            _cardReward = Label("CardReward", rt, "", 17, TextAnchor.LowerCenter,
+            _cardStats = Label("CardStats", rt, "", 16, TextAnchor.UpperCenter,
+                new Vector2(0, 0), new Vector2(1, 0), new Vector2(12, 72), new Vector2(-12, 124));
+            _cardStats.color = UiKit.InkDim;
+            _cardReward = Label("CardReward", rt, "", 18, TextAnchor.LowerCenter,
                 new Vector2(0, 0), new Vector2(1, 0), new Vector2(12, 12), new Vector2(-12, 70));
         }
 
@@ -504,9 +559,12 @@ namespace Pancing.UI
                           new Vector2(offset.x + size.x * 0.5f, offset.y + size.y * 0.5f));
             var img = rt.gameObject.AddComponent<Image>();
             img.color = new Color(0.10f, 0.16f, 0.18f, 0.72f);
+            // Thumb buttons are pills and circles: easier to hit, easier to read.
+            UiKit.Rounded(img, Mathf.Min(size.x, size.y) * 0.5f);
             var t = Label(label + "Text", rt, label, 20, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             t.raycastTarget = false;
+            t.fontStyle = FontStyle.Bold;
             return img;
         }
 
@@ -609,6 +667,7 @@ namespace Pancing.UI
         {
             bool charging = tm.Cast.Charging;
             if (_castRow.gameObject.activeSelf != charging) _castRow.gameObject.SetActive(charging);
+            if (_castHint != null && _castHint.activeSelf != charging) _castHint.SetActive(charging);
             if (!charging) return;
 
             float v = (float)tm.Cast.Value;
@@ -723,6 +782,11 @@ namespace Pancing.UI
             var rarity = Game.Species?.RarityOf(sp);
             _cardTitle.text = card.IsRecord ? $"REKOD BARU — {sp.Name}" : sp.Name;
             _cardTitle.color = ProcNoise.HexToColor(rarity?.Color ?? "#ffffff");
+            if (_cardEdge != null)
+            {
+                var rc = _cardTitle.color;
+                _cardEdge.color = new Color(rc.r, rc.g, rc.b, 0.85f);
+            }
 
             _cardStats.text =
                 $"{card.Fish.LengthCm:0.0} cm · {card.Fish.MassKg:0.000} kg · {card.SizeClass.Label}\n" +

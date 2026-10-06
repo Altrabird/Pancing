@@ -17,13 +17,73 @@ namespace Pancing.UI
         /// <summary>Set once by the HUD at startup; every builder below uses it.</summary>
         public static Font Font;
 
-        public static readonly Color Ink = new Color(0.93f, 0.96f, 0.95f);
-        public static readonly Color InkDim = new Color(0.66f, 0.72f, 0.72f);
-        public static readonly Color Panel = new Color(0.05f, 0.08f, 0.09f, 0.62f);
-        public static readonly Color PanelSolid = new Color(0.06f, 0.09f, 0.10f, 0.97f);
+        public static readonly Color Ink = new Color(0.95f, 0.97f, 0.96f);
+        public static readonly Color InkDim = new Color(0.68f, 0.75f, 0.76f);
+        public static readonly Color Panel = new Color(0.035f, 0.075f, 0.095f, 0.72f);
+        public static readonly Color PanelSolid = new Color(0.045f, 0.085f, 0.105f, 0.97f);
+        public static readonly Color Edge = new Color(1f, 1f, 1f, 0.13f);
+        public static readonly Color Track = new Color(0f, 0f, 0f, 0.42f);
+        public static readonly Color ButtonBase = new Color(0.10f, 0.24f, 0.27f, 0.92f);
         public static readonly Color Accent = new Color(0.42f, 0.78f, 0.62f);
         public static readonly Color Danger = new Color(0.90f, 0.38f, 0.32f);
         public static readonly Color Gold = new Color(1f, 0.84f, 0.42f);
+
+        /* --- rounded sprites, generated once ----------------------------------- */
+
+        // The whole look hangs on these two: a filled rounded rectangle and a thin
+        // rounded ring, both 9-sliced, generated at runtime so there are still no
+        // image files in the project. Corner radius per widget comes from
+        // pixelsPerUnitMultiplier (texture radius / wanted radius).
+        private const int SpriteSize = 64;
+        private const float SpriteRadius = 16f;
+        private static Sprite _round, _ring;
+
+        public static Sprite Round => _round != null ? _round : (_round = MakeRounded(false));
+        public static Sprite Ring => _ring != null ? _ring : (_ring = MakeRounded(true));
+
+        private static Sprite MakeRounded(bool ring)
+        {
+            var tex = new Texture2D(SpriteSize, SpriteSize, TextureFormat.RGBA32, false)
+            { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, name = ring ? "ui_ring" : "ui_round" };
+            var px = new Color32[SpriteSize * SpriteSize];
+            float r = SpriteRadius, half = SpriteSize * 0.5f;
+            for (int y = 0; y < SpriteSize; y++)
+            for (int x = 0; x < SpriteSize; x++)
+            {
+                // Signed distance to a rounded square filling the texture.
+                float qx = Mathf.Abs(x + 0.5f - half) - (half - r);
+                float qy = Mathf.Abs(y + 0.5f - half) - (half - r);
+                float outside = new Vector2(Mathf.Max(qx, 0f), Mathf.Max(qy, 0f)).magnitude;
+                float d = outside + Mathf.Min(Mathf.Max(qx, qy), 0f) - r;
+                float a = Mathf.Clamp01(0.5f - d);                 // 1 px anti-aliased edge
+                if (ring) a *= Mathf.Clamp01(d + 2.5f);           // keep a 2 px band
+                px[y * SpriteSize + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+            }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            return Sprite.Create(tex, new Rect(0, 0, SpriteSize, SpriteSize), new Vector2(0.5f, 0.5f),
+                                 100f, 0, SpriteMeshType.FullRect, new Vector4(r, r, r, r));
+        }
+
+        /// <summary>Give an Image rounded corners of `radius` reference pixels.</summary>
+        public static void Rounded(Image img, float radius, bool ring = false)
+        {
+            if (radius <= 0f) return;
+            img.sprite = ring ? Ring : Round;
+            img.type = Image.Type.Sliced;
+            img.pixelsPerUnitMultiplier = SpriteRadius / radius;
+        }
+
+        /// <summary>A panel: rounded glass with a faint outline.</summary>
+        public static Image Card(string name, Transform parent, Color color,
+                                 Vector2 anchorMin, Vector2 anchorMax,
+                                 Vector2 offsetMin, Vector2 offsetMax, float radius = 14f)
+        {
+            var img = Box(name, parent, color, anchorMin, anchorMax, offsetMin, offsetMax, radius);
+            var edge = Box(name + "Edge", img.transform, Edge, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            Rounded(edge, radius, ring: true);
+            return img;
+        }
 
         public static Font Resolve() =>
             Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")
@@ -45,12 +105,13 @@ namespace Pancing.UI
 
         public static Image Box(string name, Transform parent, Color color,
                                 Vector2 anchorMin, Vector2 anchorMax,
-                                Vector2 offsetMin, Vector2 offsetMax)
+                                Vector2 offsetMin, Vector2 offsetMax, float radius = 0f)
         {
             var rt = Rect(name, parent, anchorMin, anchorMax, offsetMin, offsetMax);
             var img = rt.gameObject.AddComponent<Image>();
             img.color = color;
             img.raycastTarget = false;
+            Rounded(img, radius);
             return img;
         }
 
@@ -71,6 +132,10 @@ namespace Pancing.UI
             // flow asks for it with Paragraph().
             t.horizontalOverflow = HorizontalWrapMode.Overflow;
             t.verticalOverflow = VerticalWrapMode.Overflow;
+            // A soft drop shadow: the HUD sits over bright sky and sand.
+            var sh = rt.gameObject.AddComponent<Shadow>();
+            sh.effectColor = new Color(0f, 0f, 0f, 0.55f);
+            sh.effectDistance = new Vector2(1f, -1.5f);
             return t;
         }
 
@@ -90,7 +155,10 @@ namespace Pancing.UI
                                 Vector2 anchorMin, Vector2 anchorMax,
                                 Vector2 offsetMin, Vector2 offsetMax, out Image track)
         {
-            track = Box(name + "Track", parent, trackColor, anchorMin, anchorMax, offsetMin, offsetMax);
+            // A pill: the track is rounded and masks the (square) fill, so the fill
+            // keeps a rounded left end and a clean edge wherever it stops.
+            track = Box(name + "Track", parent, trackColor, anchorMin, anchorMax, offsetMin, offsetMax, 8f);
+            track.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             var fill = Box(name + "Fill", track.transform, fillColor,
                            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             fill.type = Image.Type.Filled;
@@ -113,18 +181,37 @@ namespace Pancing.UI
         {
             var rt = Rect(name, parent, anchorMin, anchorMax, offsetMin, offsetMax);
             var img = rt.gameObject.AddComponent<Image>();
-            img.color = new Color(0.13f, 0.22f, 0.24f, 0.95f);
+            img.color = ButtonBase;
+            Rounded(img, 10f);
+
+            // Hover/press glow as an overlay, so callers that recolour the button
+            // for its state (equipped, unaffordable) are never overwritten.
+            var glow = Box(name + "Glow", rt, new Color(1f, 1f, 1f, 0f), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 10f);
+            var edge = Box(name + "Edge", rt, Edge, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            Rounded(edge, 10f, ring: true);
 
             labelText = Label(name + "Text", rt, label, size, TextAnchor.MiddleCenter,
                               Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             labelText.raycastTarget = false;
+            labelText.fontStyle = FontStyle.Bold;
+
+            var hover = rt.gameObject.AddComponent<EventTrigger>();
+            void On(EventTriggerType type, float a)
+            {
+                var e = new EventTrigger.Entry { eventID = type };
+                e.callback.AddListener(_ => glow.color = new Color(1f, 1f, 1f, a));
+                hover.triggers.Add(e);
+            }
+            On(EventTriggerType.PointerEnter, 0.10f);
+            On(EventTriggerType.PointerExit, 0f);
+            On(EventTriggerType.PointerDown, 0.22f);
+            On(EventTriggerType.PointerUp, 0.10f);
 
             if (onClick != null)
             {
-                var trigger = rt.gameObject.AddComponent<EventTrigger>();
                 var entry = new EventTrigger.Entry { eventID = EventTriggerType.PointerClick };
                 entry.callback.AddListener(_ => onClick());
-                trigger.triggers.Add(entry);
+                hover.triggers.Add(entry);
             }
             return img;
         }
