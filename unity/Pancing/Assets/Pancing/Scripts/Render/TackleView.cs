@@ -46,6 +46,8 @@ namespace Pancing.Render
         /// <summary>Unit vector the blank points along. The angler aims their arms at it.</summary>
         public Vector3 RodDir { get; private set; } = Vector3.forward;
         public Vector3 LurePos { get; private set; }
+        /// <summary>The hooked fish's world position (its snout), while one is on.</summary>
+        public Vector3 FishPos => _fishRoot != null ? _fishRoot.position : Vector3.zero;
 
         public static TackleView Create(Transform parent)
         {
@@ -244,11 +246,27 @@ namespace Pancing.Render
             if (showLine)
             {
                 BuildCatenary(RodTip, lurePos, (float)tm.Rod.Tension);
+                float load = Mathf.Clamp01((float)tm.Rod.LoadFrac);
+                // Near breaking, the line sings: a fast standing-wave shiver across
+                // the span, growing as the load climbs toward the test.
+                float hum = Mathf.Clamp01((load - 0.65f) / 0.35f);
+                if (hum > 0f && tm.Fish.HasValue)
+                {
+                    Vector3 across = Vector3.Cross((lurePos - RodTip).normalized, Vector3.up).normalized;
+                    for (int i = 1; i < LineSegments; i++)
+                    {
+                        float t = i / (float)LineSegments;
+                        float w = Mathf.Sin(t * Mathf.PI) * Mathf.Sin(Time.time * 70f + t * 9f);
+                        _linePoints[i] += (across * 0.05f + Vector3.up * 0.03f) * w * hum;
+                    }
+                }
                 _line.SetPositions(_linePoints);
                 // Line goes taut and pale under load, slack and dim when it is not
-                // doing anything.
-                float load = Mathf.Clamp01((float)tm.Rod.LoadFrac);
-                _lineMat.color = Color.Lerp(new Color(0.75f, 0.79f, 0.82f), Color.white, load);
+                // doing anything — and runs red in the danger zone.
+                Color lc = Color.Lerp(new Color(0.75f, 0.79f, 0.82f), Color.white, load);
+                if (tm.Rod.Zone == TensionZone.Danger)
+                    lc = Color.Lerp(lc, new Color(1f, 0.25f, 0.2f), 0.55f + Mathf.PingPong(Time.time * 6f, 0.45f));
+                _lineMat.color = lc;
             }
 
             // --- hooked fish --------------------------------------------------

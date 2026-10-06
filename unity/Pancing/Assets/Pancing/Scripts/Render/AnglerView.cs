@@ -40,6 +40,10 @@ namespace Pancing.Render
 
         private float _lean, _coil, _pump, _sway;
 
+        private Vector3? _hold;
+        /// <summary>While set, the right hand leaves the rod to hold up a landed fish here.</summary>
+        public void SetHold(Vector3? at) => _hold = at;
+
         /// <summary>Where the rod butt sits. Matches TackleView's butt.</summary>
         public Vector3 GripPoint { get; private set; } = new Vector3(0f, 1.05f, 0.15f);
 
@@ -195,7 +199,9 @@ namespace Pancing.Render
             Vector3 upperHand = butt + rod * 0.36f;
             // Elbows drop and flare out, as when actually holding a rod.
             if (_upperL != null) Solve(_upperL, _lowerL, _handL, lowerHand, _upperL.position - right * 0.4f - up * 0.6f);
-            if (_upperR != null) Solve(_upperR, _lowerR, _handR, upperHand, _upperR.position + right * 0.4f - up * 0.6f);
+            if (_upperR != null)
+                Solve(_upperR, _lowerR, _handR, _hold ?? upperHand,
+                      _upperR.position + right * 0.4f - up * (_hold.HasValue ? 0.2f : 0.6f));
         }
 
         private static void Rotate(Transform t, Vector3 axis, float degrees)

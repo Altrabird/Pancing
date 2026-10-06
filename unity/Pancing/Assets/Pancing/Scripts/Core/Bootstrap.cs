@@ -48,6 +48,7 @@ namespace Pancing.Core
         private AudioService _audio;
         private AmbientLife _life;
         private TitleScreen _title;
+        private FightFx _fightFx;
         private Canvas _hudCanvas, _panelCanvas;
 
         private void Start()
@@ -221,6 +222,7 @@ namespace Pancing.Core
             _panels = PanelSystem.Create(transform, _input, _hud);
             _audio = AudioService.Create(transform);
             _life = AmbientLife.Create(transform, _water, _audio, _camera != null ? _camera.Camera : null);
+            _fightFx = FightFx.Create(transform, _tackle, _water, _camera, _audio, _angler);
             if (DevArgs.Panel != null && System.Enum.TryParse<PanelTab>(DevArgs.Panel, true, out var tab))
                 _panels.Open(tab);
             // Test runs go straight to the water; -title shows the front door.
@@ -334,6 +336,7 @@ namespace Pancing.Core
             _hud?.Apply(tm, Game.World, Game.State, dt);
             _audio?.Apply(tm, Game.World, Game.State.Spot, dt);
             _life?.Apply(Game.World, Game.State.Spot, dt);
+            _fightFx?.Apply(tm, dt);
 
             _autosaveTimer += dt;
             if (_autosaveTimer >= AutosaveInterval) { _autosaveTimer = 0f; Save(); }

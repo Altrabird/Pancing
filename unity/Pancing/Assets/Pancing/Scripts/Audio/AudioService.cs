@@ -26,7 +26,8 @@ namespace Pancing.Audio
     public sealed class AudioService : MonoBehaviour
     {
         private readonly Dictionary<string, AudioClip> _clips = new Dictionary<string, AudioClip>();
-        private AudioSource _bedA, _bedB, _water, _rain, _drag;
+        private AudioSource _bedA, _bedB, _water, _rain, _drag, _drums, _tension;
+        private bool _fightMusic;
         private readonly AudioSource[] _fx = new AudioSource[6];
         private int _fxNext;
         private string _bedClip;
@@ -52,6 +53,10 @@ namespace Pancing.Audio
             _water = Loop("Water");
             _rain = Loop("Rain", "amb_hujan");
             _drag = Loop("Drag", "drag");
+            _drums = Loop("FightDrums");
+            _tension = Loop("FightTension");
+            if (_clips.TryGetValue("fight_drums", out var dr)) _drums.clip = dr;
+            if (_clips.TryGetValue("fight_tension", out var tn)) _tension.clip = tn;
             for (int i = 0; i < _fx.Length; i++)
             {
                 _fx[i] = gameObject.AddComponent<AudioSource>();
@@ -147,6 +152,30 @@ namespace Pancing.Audio
                 _reelPhase -= Mathf.Floor(_reelPhase);
                 Play("reel_tick", 0.35f, 0.06f);
             }
+            // --- the fight's drums --------------------------------------------------
+            // Gendang and kompang come in on the hook and drive harder as the line
+            // loads; the shaker and drone only arrive when it is getting dangerous.
+            bool fighting = tm.Fish.HasValue;
+            float load = Mathf.Clamp01((float)tm.Rod.LoadFrac);
+            if (fighting && !_fightMusic && _drums.clip != null)
+            {
+                _fightMusic = true;
+                _drums.time = 0f; _tension.time = 0f;
+                _drums.Play(); _tension.Play();
+            }
+            float rdt = Time.unscaledDeltaTime;
+            float drumTarget = fighting ? 0.38f + 0.3f * load : 0f;
+            float tensionTarget = fighting ? Mathf.Clamp01((load - 0.5f) / 0.4f) * 0.55f : 0f;
+            _drums.volume = Mathf.MoveTowards(_drums.volume, drumTarget, rdt * (fighting ? 1.5f : 0.5f));
+            _tension.volume = Mathf.MoveTowards(_tension.volume, tensionTarget, rdt * 1.2f);
+            float tempo = 1f + 0.08f * load;
+            _drums.pitch = _tension.pitch = tempo * Time.timeScale;   // slow-mo drops the pitch too
+            if (!fighting && _fightMusic && _drums.volume <= 0f)
+            {
+                _fightMusic = false;
+                _drums.Stop(); _tension.Stop();
+            }
+
             float dragTarget = tm.Rod.Slipping ? 0.55f : 0f;
             _drag.volume = Mathf.MoveTowards(_drag.volume, dragTarget, dt * 4f);
             _drag.pitch = 0.9f + Mathf.Clamp01((float)tm.Rod.LoadFrac) * 0.4f;

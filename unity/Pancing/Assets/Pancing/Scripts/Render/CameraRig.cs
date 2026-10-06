@@ -48,6 +48,20 @@ namespace Pancing.Render
         /// <summary>Kick the camera — a snapped line, a fish breaking the surface.</summary>
         public void Shake(float amount) => _shake = Mathf.Max(_shake, Mathf.Clamp01(amount));
 
+        private float _fovKick, _baseFov = -1f;
+        private Vector3 _closeUp;
+        private float _closeUpUntil = -1f;
+
+        /// <summary>A quick zoom punch (degrees narrower) that relaxes back — a jump, a surge.</summary>
+        public void Kick(float degrees) => _fovKick = Mathf.Max(_fovKick, degrees);
+
+        /// <summary>Frame `target` up close for `seconds` (real time) — the landed fish held up.</summary>
+        public void CloseUp(Vector3 target, float seconds)
+        {
+            _closeUp = target;
+            _closeUpUntil = Time.unscaledTime + seconds;
+        }
+
         public void Apply(in FishingGame.Telemetry tm, float aimYaw, Vector3 lurePos, float dt)
         {
             // The camera lives BEHIND THE ANGLER, who stands at the origin — never
@@ -90,6 +104,16 @@ namespace Pancing.Render
                 aimHeight = 1.6f;
             }
 
+            // The landing: swing in beside the angler to look at the fish he holds up.
+            if (Time.unscaledTime < _closeUpUntil)
+            {
+                focus = _closeUp;
+                distance = 2.1f;
+                height = 1.9f;
+                aimHeight = 0f;
+                forward = new Vector3(0.35f, 0f, 1f).normalized;
+            }
+
             // Charging pulls the camera back and drops it, which reads as winding up.
             if (tm.Phase == GameState.Charging)
             {
@@ -128,6 +152,10 @@ namespace Pancing.Render
             }
 
             transform.SetPositionAndRotation(_pos + _rot * shakeOffset, _rot);
+
+            if (_baseFov < 0f) _baseFov = _cam.fieldOfView;
+            _fovKick = Mathf.Max(0f, _fovKick - Time.unscaledDeltaTime * 14f);
+            _cam.fieldOfView = _baseFov - _fovKick;
         }
     }
 }

@@ -330,6 +330,57 @@ def sfx():
     write('click', ck, .5)
 
 
+def fight_music():
+    """Gendang and kompang under the fight: a driving 2-bar groove (looped), and a
+    separate shaker/tremolo layer the game brings in as the tension climbs."""
+    bpm = 118
+    step = 60 / bpm / 4                      # sixteenth
+    bars = 4
+    n = int(step * 16 * bars * SR)
+    buf = np.zeros(n)
+
+    def dung(f0=95):                          # gendang bass head: pitch-dropping thump
+        tt = t_axis(.35)
+        f = f0 * (1 + 1.2 * np.exp(-tt * 28))
+        return np.sin(2 * math.pi * np.cumsum(f) / SR) * env_ad(len(tt), .002, .12)
+
+    def tak():                                # gendang slap: bright, short
+        tt = t_axis(.09)
+        return (band(noise(len(tt)), 1800, 6000) * env_ad(len(tt), .0005, .018)
+                + np.sin(2 * math.pi * 620 * tt) * env_ad(len(tt), .0005, .03) * .5)
+
+    def kompang():                            # frame drum: mid ring + skin slap
+        tt = t_axis(.22)
+        ring = np.sin(2 * math.pi * 238 * tt) * env_ad(len(tt), .001, .07)
+        return ring + band(noise(len(tt)), 600, 3000) * env_ad(len(tt), .0005, .025) * .7
+
+    #            1 e & a 2 e & a 3 e & a 4 e & a
+    pat_dung = "x.....x...x....." + "x.....x.x...x..."
+    pat_tak = "....x.......x..x" + "....x.......x.xx"
+    pat_komp = "..x...x...x...x." + "..x...x.x.x...x."
+    for b in range(bars):
+        for i in range(16):
+            at = (b * 16 + i) * step
+            k = (b % 2) * 16 + i
+            if pat_dung[k] == 'x':
+                place(buf, dung(90 if i else 82) * .9, at)
+            if pat_tak[k] == 'x':
+                place(buf, tak() * .55, at)
+            if pat_komp[k] == 'x':
+                place(buf, kompang() * .5 * (1.0 if i % 4 == 2 else .75), at + rng.uniform(0, .006))
+    write('fight_drums', buf, .8)
+
+    # shaker on every sixteenth with an accent, plus a low drone pulse
+    sh = np.zeros(n)
+    for j in range(16 * bars):
+        tt = t_axis(.06)
+        hit = band(noise(len(tt)), 4000, 9000) * env_ad(len(tt), .004, .02) * (1.0 if j % 4 == 2 else .55)
+        place(sh, hit, j * step)
+    tt = t_axis(n / SR)
+    drone = np.sin(2 * math.pi * 55 * tt) * (0.5 + 0.5 * np.sin(2 * math.pi * (bpm / 60) * tt) ** 8) * .5
+    write('fight_tension', norm(sh, .7) + norm(drone, .35), .7)
+
+
 def gong(f, dur):
     """A small bronze kettle gong: inharmonic partials, the high ones dying fast."""
     tt = t_axis(dur)
@@ -347,3 +398,4 @@ if __name__ == '__main__':
     amb_malam()
     amb_hujan()
     sfx()
+    fight_music()

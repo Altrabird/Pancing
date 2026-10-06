@@ -317,7 +317,7 @@ namespace Pancing.UI
 
         private RectTransform _windowRow;
         private GameObject _castHint;
-        private CanvasGroup _edgeFlash;
+        private CanvasGroup _edgeFlash, _dangerFlash;
 
         // fight bar
         private RectTransform _fightRow, _tugMarker;
@@ -347,6 +347,23 @@ namespace Pancing.UI
             Box("EdgeBottom", root, glow, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 0), new Vector2(0, t));
             Box("EdgeLeft", root, glow, new Vector2(0, 0), new Vector2(0, 1), new Vector2(0, 0), new Vector2(t, 0));
             Box("EdgeRight", root, glow, new Vector2(1, 0), new Vector2(1, 1), new Vector2(-t, 0), new Vector2(0, 0));
+
+            // The same idea in red for a line about to part: a heartbeat at the
+            // edge of vision while the tension sits in the danger band.
+            var droot = Rect("DangerFlash", transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            _dangerFlash = droot.gameObject.AddComponent<CanvasGroup>();
+            _dangerFlash.alpha = 0f;
+            _dangerFlash.blocksRaycasts = false;
+            Color red = new Color(0.95f, 0.12f, 0.08f, 0.85f);
+            for (int i = 0; i < 3; i++)
+            {
+                float d = 8f + i * 10f;
+                Color c = new Color(red.r, red.g, red.b, red.a * (1f - i * 0.33f));
+                Box("DTop" + i, droot, c, new Vector2(0, 1), new Vector2(1, 1), new Vector2(0, -d), new Vector2(0, -d + 9f));
+                Box("DBottom" + i, droot, c, new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, d - 9f), new Vector2(0, d));
+                Box("DLeft" + i, droot, c, new Vector2(0, 0), new Vector2(0, 1), new Vector2(d - 9f, 0), new Vector2(d, 0));
+                Box("DRight" + i, droot, c, new Vector2(1, 0), new Vector2(1, 1), new Vector2(-d, 0), new Vector2(-d + 9f, 0));
+            }
         }
 
         /// <summary>
@@ -491,8 +508,8 @@ namespace Pancing.UI
         private void BuildCatchCard()
         {
             var card = UiKit.Card("CatchCard", transform, new Color(0.04f, 0.08f, 0.10f, 0.95f),
-                          new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                          new Vector2(-250, -190), new Vector2(250, 190), 22f);
+                          new Vector2(1f, 0.5f), new Vector2(1f, 0.5f),
+                          new Vector2(-536, -170), new Vector2(-36, 210), 22f);
             var rt = (RectTransform)card.transform;
             _cardEdge = rt.Find("CatchCardEdge").GetComponent<Image>();
             _cardGroup = rt.gameObject.AddComponent<CanvasGroup>();
@@ -642,6 +659,15 @@ namespace Pancing.UI
             // after ten seconds; a pulse is not.
             if (rod.Zone == TensionZone.Danger)
                 zone = Color.Lerp(zone, Color.white, Mathf.PingPong(Time.time * 6f, 1f) * 0.45f);
+            if (_dangerFlash != null)
+            {
+                bool danger = tm.Fish.HasValue && rod.Zone == TensionZone.Danger;
+                // A double-thump, like a pulse.
+                float beat = Mathf.Repeat(Time.time * 1.6f, 1f);
+                float pulse = Mathf.Exp(-beat * 14f) + 0.6f * Mathf.Exp(-Mathf.Abs(beat - 0.22f) * 14f);
+                float target = danger ? 0.25f + 0.6f * Mathf.Clamp01(pulse) : 0f;
+                _dangerFlash.alpha = Mathf.MoveTowards(_dangerFlash.alpha, target, Time.unscaledDeltaTime * 5f);
+            }
             _tensionFill.color = zone;
 
             // Position the clutch marker as a fraction of the line's breaking force.
